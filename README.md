@@ -189,12 +189,13 @@ Edit the mchp-cryptoauth.rules file and add the following line to the file:
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="03eb", ATTRS{idProduct}=="2312", MODE="0666"
 ```
 
-
-## Incorporating CryptoAuthLib in a Zephyr Project
+Incorporating CryptoAuthLib in a Zephyr Project
+===========================================
 
 CryptoAuthLib now builds as a proper Zephyr module and exposes its Kconfig options directly.
 
-### Out-of-tree Zephyr application
+Out-of-tree Zephyr application
+-----------------------------------------
 
 Add this **before** your `find_package(Zephyr …)` in your top-level `CMakeLists.txt`:
 
@@ -206,7 +207,8 @@ set(EXTRA_ZEPHYR_MODULES ${CMAKE_CURRENT_SOURCE_DIR}/../modules/lib/cryptoauthli
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 ````
 
-### In-tree Zephyr workspace
+In-tree Zephyr workspace
+-----------------------------------------
 
 If you’ve placed CryptoAuthLib under `zephyr/modules/lib/cryptoauthlib`, simply:
 
@@ -216,7 +218,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 and Zephyr will auto-scan its `modules/` folder.
 
-### Available Kconfig Options
+Available Kconfig Options
+-----------------------------------------
 
 All of CryptoAuthLib’s Zephyr build flags are controlled via Kconfig. In your `prj.conf`, you can enable or disable:
 
@@ -258,3 +261,10 @@ When you build, these `CONFIG_ATCA_*` settings are automatically mapped into the
 ```
 
 This gives you seamless, Zephyr-style integration of CryptoAuthLib alongside your application.
+
+Updating *X.509 compressed certificate format* to support extended years 
+===========================================
+
+The X.509 compressed certificate format now supports encoding issue and expiry years beyond 2031.
+
+For implementation details, see: [Extending Certificate Years](https://github.com/MicrochipTech/cryptoauthlib/wiki/Extending-Certificate-Years)
