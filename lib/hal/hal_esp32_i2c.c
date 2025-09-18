@@ -15,7 +15,19 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <soc/soc_caps.h>
+#include "esp_idf_version.h"
+
+#if defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
 #include <driver/i2c.h>
+#else
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
+#include <driver/i2c_master.h>
+#else
+#include <driver/i2c.h>
+#endif
+#endif
+
 #include "esp_err.h"
 #include "esp_log.h"
 #include "cryptoauthlib.h"
@@ -38,7 +50,14 @@
 typedef struct atcaI2Cmaster
 {
     int          id;
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0) || defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
     i2c_config_t conf;
+#else
+    i2c_master_bus_config_t conf;
+    i2c_device_config_t dev_conf;
+    i2c_master_bus_handle_t bus_handle;
+    i2c_master_dev_handle_t dev_handle;
+#endif
     int          ref_ct;
 } ATCAI2CMaster_t;
 
@@ -58,9 +77,14 @@ ATCA_STATUS hal_i2c_change_baud(ATCAIface iface, uint32_t speed)
     ATCAIfaceCfg *cfg = atgetifacecfg(iface);
     int bus = cfg->atcai2c.bus;
 
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0) || defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
     i2c_hal_data[bus].conf.master.clk_speed = speed;
-
     rc = i2c_param_config(i2c_hal_data[bus].id, &i2c_hal_data[bus].conf);
+#else
+    i2c_hal_data[bus].dev_conf.scl_speed_hz = speed;
+    rc = i2c_master_bus_add_device(i2c_hal_data[bus].bus_handle, &i2c_hal_data[bus].dev_conf, &i2c_hal_data[bus].dev_handle);
+#endif
+
     if (rc == ESP_OK)
     {
         //ESP_LOGD(TAG, "Baudrate Changed");
@@ -99,32 +123,46 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
         if (0 == i2c_hal_data[bus].ref_ct)
         {
             i2c_hal_data[bus].ref_ct = 1;
+
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0) || defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
+
             i2c_hal_data[bus].conf.mode = I2C_MODE_MASTER;
             i2c_hal_data[bus].conf.sda_pullup_en = GPIO_PULLUP_DISABLE;
             i2c_hal_data[bus].conf.scl_pullup_en = GPIO_PULLUP_DISABLE;
-            i2c_hal_data[bus].conf.master.clk_speed = 100000; //cfg->atcai2c.baud;
+            i2c_hal_data[bus].conf.master.clk_speed = 100000; // cfg->atcai2c.baud
 
             switch (bus)
             {
-            case 0:
-                i2c_hal_data[bus].id = I2C_NUM_0;
-                i2c_hal_data[bus].conf.sda_io_num = I2C0_SDA_PIN;
-                i2c_hal_data[bus].conf.scl_io_num = I2C0_SCL_PIN;
-                break;
-            case 1:
-                i2c_hal_data[bus].id = I2C_NUM_1;
-                i2c_hal_data[bus].conf.sda_io_num = I2C1_SDA_PIN;
-                i2c_hal_data[bus].conf.scl_io_num = I2C1_SCL_PIN;
-                break;
-            default:
-                break;
+                case 0: i2c_hal_data[bus].id = I2C_NUM_0;
+                        i2c_hal_data[bus].conf.sda_io_num = I2C0_SDA_PIN;
+                        i2c_hal_data[bus].conf.scl_io_num = I2C0_SCL_PIN;
+                        break;
+                case 1: i2c_hal_data[bus].id = I2C_NUM_1;
+                        i2c_hal_data[bus].conf.sda_io_num = I2C1_SDA_PIN;
+                        i2c_hal_data[bus].conf.scl_io_num = I2C1_SCL_PIN;
+                        break;
             }
 
-//            ESP_LOGI(TAG, "Configuring I2C");
             rc = i2c_param_config(i2c_hal_data[bus].id, &i2c_hal_data[bus].conf);
-//            ESP_LOGD(TAG, "I2C Param Config: %s", esp_err_to_name(rc));
-            rc = i2c_driver_install(i2c_hal_data[bus].id, I2C_MODE_MASTER, 0, 0, 0);
-//            ESP_LOGD(TAG, "I2C Driver Install; %s", esp_err_to_name(rc));
+            if (rc == ESP_OK) {
+                rc = i2c_driver_install(i2c_hal_data[bus].id, I2C_MODE_MASTER, 0, 0, 0);
+            }
+
+#else
+
+            i2c_hal_data[bus].conf.i2c_port = (bus == 0) ? I2C_NUM_0 : I2C_NUM_1;
+            i2c_hal_data[bus].conf.scl_io_num = (bus == 0) ? I2C0_SCL_PIN : I2C1_SCL_PIN;
+            i2c_hal_data[bus].conf.sda_io_num = (bus == 0) ? I2C0_SDA_PIN : I2C1_SDA_PIN;
+            i2c_hal_data[bus].conf.clk_source = I2C_CLK_SRC_DEFAULT;
+            i2c_hal_data[bus].conf.glitch_ignore_cnt = 7;
+            i2c_hal_data[bus].conf.flags.enable_internal_pullup = true;
+
+            i2c_hal_data[bus].dev_conf.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+            i2c_hal_data[bus].dev_conf.scl_speed_hz = 100000; // cfg->atcai2c.baud
+
+            rc = i2c_new_master_bus(&i2c_hal_data[bus].conf, &i2c_hal_data[bus].bus_handle);
+            
+#endif
         }
         else
         {
@@ -134,16 +172,9 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
         iface->hal_data = &i2c_hal_data[bus];
     }
 
-    if (ESP_OK == rc)
-    {
-        return ATCA_SUCCESS;
-    }
-    else
-    {
-        //ESP_LOGE(TAG, "I2C init failed");
-        return ATCA_COMM_FAIL;
-    }
+    return (ESP_OK == rc) ? ATCA_SUCCESS : ATCA_COMM_FAIL;
 }
+
 
 /** \brief HAL implementation of I2C post init
  * \param[in] iface  instance
@@ -173,14 +204,14 @@ ATCA_STATUS hal_i2c_send(ATCAIface iface, uint8_t word_address, uint8_t *txdata,
     }
 
 #ifdef ATCA_ENABLE_DEPRECATED
-    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.slave_address)
+    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.slave_address);
 #else
-    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.address)
+    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.address);
 #endif
-
 
     //ESP_LOGD(TAG, "txdata: %p , txlength: %d", txdata, txlength);
     //ESP_LOG_BUFFER_HEXDUMP(TAG, txdata, txlength, 3);
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0) || defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     (void)i2c_master_start(cmd);
@@ -194,6 +225,33 @@ ATCA_STATUS hal_i2c_send(ATCAIface iface, uint8_t word_address, uint8_t *txdata,
     (void)i2c_master_stop(cmd);
     rc = i2c_master_cmd_begin(cfg->atcai2c.bus, cmd, 10);
     (void)i2c_cmd_link_delete(cmd);
+
+#else
+
+    int bus = cfg->atcai2c.bus;
+    uint8_t temp_buf[MAX_PACKET_SIZE] = {0};
+    i2c_hal_data[bus].dev_conf.device_address = device_address >> 1;
+
+    rc = i2c_master_bus_add_device(i2c_hal_data[bus].bus_handle, &i2c_hal_data[bus].dev_conf, &i2c_hal_data[bus].dev_handle);
+
+    if (ESP_OK == rc)
+    {
+        temp_buf[0] = word_address;
+
+        if (NULL != txdata)
+        {
+            memcpy(&temp_buf[1], txdata, txlength);
+        }
+
+        //! Add 1 byte for word address
+        txlength += 1u;
+
+        rc = i2c_master_transmit(i2c_hal_data[bus].dev_handle, temp_buf, txlength, 200);
+    }
+
+    (void)i2c_master_bus_rm_device(i2c_hal_data[bus].dev_handle);
+    
+#endif
 
     if (ESP_OK != rc)
     {
@@ -217,13 +275,17 @@ ATCA_STATUS hal_i2c_receive(ATCAIface iface, uint8_t address, uint8_t *rxdata, u
 {
     ATCAIfaceCfg *cfg = iface->mIfaceCFG;
     esp_err_t rc;
-    i2c_cmd_handle_t cmd;
+    int bus = cfg->atcai2c.bus;
+    
     ATCA_STATUS status = ATCA_COMM_FAIL;
 
     if ((NULL == cfg) || (NULL == rxlength) || (NULL == rxdata))
     {
         return ATCA_TRACE(ATCA_BAD_PARAM, "NULL pointer encountered");
     }
+
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0) || defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
+    i2c_cmd_handle_t cmd;
 
     cmd = i2c_cmd_link_create();
     (void)i2c_master_start(cmd);
@@ -238,6 +300,25 @@ ATCA_STATUS hal_i2c_receive(ATCAIface iface, uint8_t address, uint8_t *rxdata, u
     (void)i2c_cmd_link_delete(cmd);
 
     //ESP_LOG_BUFFER_HEXDUMP(TAG, rxdata, *rxlength, 3);
+
+#else
+
+#ifdef ATCA_ENABLE_DEPRECATED
+    i2c_hal_data[bus].dev_conf.device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.slave_address) >> 1;
+#else
+    i2c_hal_data[bus].dev_conf.device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.address) >> 1;
+#endif
+    
+    rc = i2c_master_bus_add_device(i2c_hal_data[bus].bus_handle, &i2c_hal_data[bus].dev_conf, &i2c_hal_data[bus].dev_handle);
+
+    if (ESP_OK == rc)
+    {
+        rc = i2c_master_receive(i2c_hal_data[bus].dev_handle, rxdata, *rxlength, 200);
+    }
+
+    (void)i2c_master_bus_rm_device(i2c_hal_data[bus].dev_handle);
+
+#endif
 
     if (ESP_OK == rc)
     {
@@ -254,13 +335,34 @@ ATCA_STATUS hal_i2c_receive(ATCAIface iface, uint8_t address, uint8_t *rxdata, u
  */
 ATCA_STATUS hal_i2c_release(void *hal_data)
 {
+    esp_err_t rc;
+    ATCA_STATUS status = ATCA_EXECUTION_ERROR;
     ATCAI2CMaster_t *hal = (ATCAI2CMaster_t*)hal_data;
+
+    if (hal->dev_handle) {
+        rc = i2c_master_bus_rm_device(hal->dev_handle);
+    }
 
     if (hal && --(hal->ref_ct) <= 0)
     {
-        i2c_driver_delete(hal->id);
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0) || defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
+        rc = i2c_driver_delete(hal->id);
+#else
+        if (ESP_OK == rc)
+        {
+          if (hal->bus_handle) {
+              rc = i2c_del_master_bus(hal->bus_handle);
+          }
+        }
+#endif
     }
-    return ATCA_SUCCESS;
+
+    if (ESP_OK == rc)
+    {
+        status = ATCA_SUCCESS;
+    }
+
+    return status;
 }
 
 /** \brief Perform control operations for the kit protocol

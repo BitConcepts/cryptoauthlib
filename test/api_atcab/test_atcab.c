@@ -90,7 +90,7 @@ int run_basic_tests(int argc, char* argv[])
     }
     else
     {
-        printf("Device is NOT Selected... Select device before running tests!");
+        (void)printf("Device is NOT Selected... Select device before running tests!");
         return -1;
     }
 }

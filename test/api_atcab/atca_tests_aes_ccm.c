@@ -553,13 +553,13 @@ static ATCA_STATUS aes_ccm_nist_vector_test(ccm_nist_vt_types_t ccm_nist_type)
 
 #ifdef ATCA_PRINTF
             // Process read vector
-            printf("\r\nCount: %04d\r\n", test_count++);
+            (void)printf("\r\nCount: %04d\r\n", test_count++);
             displaySize = sizeof(displayStr);
             (void) atcab_bin2hex(aad, aad_size, displayStr, &displaySize);
-            printf("Adata: \r\n%s\r\n", displayStr);
+            (void)printf("Adata: \r\n%s\r\n", displayStr);
             displaySize = sizeof(displayStr);
             (void) atcab_bin2hex(plaintext, ptlen, displayStr, &displaySize);
-            printf("Payload: \r\n%s\r\n", displayStr);
+            (void)printf("Payload: \r\n%s\r\n", displayStr);
 #endif
 
             if (ATECC608 == dev_type)
@@ -624,7 +624,7 @@ TEST(atca_cmd_basic_test, aes_ccm_nist_vadt128)
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
 #ifdef ATCA_PRINTF
-    printf("\n");
+    (void)printf("\n");
 #endif
 }
 
@@ -637,7 +637,7 @@ TEST(atca_cmd_basic_test, aes_ccm_nist_vnt128)
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
 #ifdef ATCA_PRINTF
-    printf("\n");
+    (void)printf("\n");
 #endif
 }
 
@@ -650,7 +650,7 @@ TEST(atca_cmd_basic_test, aes_ccm_nist_vpt128)
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
 #ifdef ATCA_PRINTF
-    printf("\n");
+    (void)printf("\n");
 #endif
 }
 
@@ -663,7 +663,7 @@ TEST(atca_cmd_basic_test, aes_ccm_nist_vtt128)
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
 #ifdef ATCA_PRINTF
-    printf("\n");
+    (void)printf("\n");
 #endif
 }
 

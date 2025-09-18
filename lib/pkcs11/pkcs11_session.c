@@ -77,7 +77,7 @@ static pkcs11_session_ctx_ptr pkcs11_allocate_session_context(void)
             rv = pkcs11_os_malloc(sizeof(pkcs11_session_ctx));
             if (rv != NULL)
             {
-                (void)memset(rv, 0, sizeof(pkcs11_session_ctx));
+                (void)pkcs11_util_memset(rv, sizeof(pkcs11_session_ctx), 0, sizeof(pkcs11_session_ctx));
                 pkcs11_session_cache[i] = rv;
             }
             break;

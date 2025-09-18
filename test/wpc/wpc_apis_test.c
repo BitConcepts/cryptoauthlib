@@ -67,7 +67,7 @@ TEST(wpc_apis, wpc_get_digests_request_response)
 
     displaylen = sizeof(displaystr);
     atcab_bin2hex(request, sizeof(request), displaystr, &displaylen);
-    printf("Digests request: \r\n%s\r\n", displaystr);
+    (void)printf("Digests request: \r\n%s\r\n", displaystr);
 
     buflen = sizeof(response);
     ret = wpc_msg_digests(device, response, &buflen, request);
@@ -75,7 +75,7 @@ TEST(wpc_apis, wpc_get_digests_request_response)
 
     displaylen = sizeof(displaystr);
     atcab_bin2hex(response, sizeof(response), displaystr, &displaylen);
-    printf("Digests response: \r\n%s\r\n", displaystr);
+    (void)printf("Digests response: \r\n%s\r\n", displaystr);
 }
 
 TEST(wpc_apis, wpc_get_certificate_request_response)
@@ -122,7 +122,7 @@ TEST(wpc_apis, wpc_challenge_request_response)
 
     displaylen = sizeof(displaystr);
     atcab_bin2hex(request, sizeof(request), displaystr, &displaylen);
-    printf("Challenge request: \r\n%s\r\n", displaystr);
+    (void)printf("Challenge request: \r\n%s\r\n", displaystr);
 
     buflen = sizeof(response);
     ret = wpc_msg_challenge_auth(device, response, &buflen, request);
@@ -130,7 +130,7 @@ TEST(wpc_apis, wpc_challenge_request_response)
 
     displaylen = sizeof(displaystr);
     atcab_bin2hex(response, sizeof(response), displaystr, &displaylen);
-    printf("Challenge auth response: \r\n%s\r\n", displaystr);
+    (void)printf("Challenge auth response: \r\n%s\r\n", displaystr);
 
     /* Verify the challenge response */
 }

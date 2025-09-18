@@ -30,7 +30,7 @@
 static t_test_case_info* integration_tests[] =
 {
 #ifdef ATCA_MBEDTLS
-    mbedtls_ecdsa_test_info,
+    mbedtls_ecdsa_ecdh_test_info,
 #endif
     (t_test_case_info*)NULL /* Array Termination element*/
 };

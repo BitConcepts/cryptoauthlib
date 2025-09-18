@@ -25,9 +25,10 @@
 
 #include "third_party/unity/unity_fixture.h"
 #include "atca_test.h"
-#include "app/tng/tng_atca.h"
 
 #if (defined(ATCA_TNGTLS_SUPPORT) || defined(ATCA_TNGLORA_SUPPORT) || defined(ATCA_TFLEX_SUPPORT)) && ATCACERT_COMPCERT_EN
+
+#include "app/tng/tng_atca.h"
 
 TEST_GROUP(tng_atca);
 

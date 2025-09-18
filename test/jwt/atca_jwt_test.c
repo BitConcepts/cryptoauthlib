@@ -309,7 +309,7 @@ TEST(atca_jwt_crypto, verify)
 {
     char buf[512];
 
-    snprintf(buf, sizeof(buf), "%s%s%s",
+    (void)snprintf(buf, sizeof(buf), "%s%s%s",
              atca_jwt_test_vector_header,
              atca_jwt_test_vector_payload,
              atca_jwt_test_vector_sig);
@@ -322,7 +322,7 @@ TEST(atca_jwt_crypto, verify_invalid)
 {
     char buf[512];
 
-    snprintf(buf, sizeof(buf), "%s%s%s",
+    (void)snprintf(buf, sizeof(buf), "%s%s%s",
              atca_jwt_test_vector_header,
              atca_jwt_test_vector_payload,
              atca_jwt_test_vector_invalid_sig);

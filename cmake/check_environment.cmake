@@ -20,13 +20,13 @@ if(_GNU_SOURCE)
 endif()
 
 # Check and configure packaging options
-set(DEFAULT_LIB_PATH "${CMAKE_INSTALL_FULL_LIBDIR}" CACHE
+set(DEFAULT_LIB_PATH "${CMAKE_INSTALL_LIBDIR}" CACHE
     STRING "The default absolute library path")
 set(DEFAULT_INC_PATH "${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}" CACHE
     STRING "The default include install path")
-set(DEFAULT_CONF_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${PROJECT_NAME}" CACHE
+set(DEFAULT_CONF_PATH "${CMAKE_INSTALL_SYSCONFDIR}/${PROJECT_NAME}" CACHE
     STRING "The default location of ${PROJECT_NAME}.conf")
-set(DEFAULT_STORE_PATH "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/${PROJECT_NAME}" CACHE
+set(DEFAULT_STORE_PATH "${CMAKE_INSTALL_LOCALSTATEDIR}/lib/${PROJECT_NAME}" CACHE
     STRING "The default location of the filestore directory")
 set(DEFAULT_CONF_FILE_NAME "${PROJECT_NAME}.conf" CACHE 
     STRING "The default file for library configuration")

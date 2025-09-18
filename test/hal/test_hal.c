@@ -57,9 +57,9 @@ const char* TEST_GROUP_hal = "hal";
 TEST_SETUP(hal)
 {
 #ifdef ATCA_PRINTF
-    printf("\n");
-    fflush(stdout);
-    fflush(stderr);
+    (void)printf("\n");
+    (void)fflush(stdout);
+    (void)fflush(stderr);
 #endif
 
     UnityMalloc_StartTest();

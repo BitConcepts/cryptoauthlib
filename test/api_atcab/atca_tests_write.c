@@ -118,7 +118,7 @@ TEST(atca_cmd_basic_test, write_upper_slots)
             continue;  // Slot is locked and can't be written to
 
         }
-        sprintf(msg, "Slot %d", (int)slot);
+        (void)sprintf(msg, "Slot %d", (int)slot);
 
         status = atcab_random(write_data);
         TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);

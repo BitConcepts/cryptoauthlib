@@ -63,7 +63,7 @@ ATCA_STATUS check_clock_divider(int argc, char* argv[])
 
     if (!(ATECC608 == gCfg->devtype))
     {
-        printf("Current device doesn't support clock divider settings (only ATECC608)\r\n");
+        (void)printf("Current device doesn't support clock divider settings (only ATECC608)\r\n");
         return ATCA_GEN_FAIL;
     }
 
@@ -71,7 +71,7 @@ ATCA_STATUS check_clock_divider(int argc, char* argv[])
     status = atcab_init(gCfg);
     if (status != ATCA_SUCCESS)
     {
-        printf("atcab_init() failed with ret=0x%08X\r\n", status);
+        (void)printf("atcab_init() failed with ret=0x%08X\r\n", status);
         return status;
     }
 
@@ -81,7 +81,7 @@ ATCA_STATUS check_clock_divider(int argc, char* argv[])
         status = atcab_read_bytes_zone(ATCA_ZONE_CONFIG, 0, ATCA_CHIPMODE_OFFSET, &chip_mode, 1);
         if (status != ATCA_SUCCESS)
         {
-            printf("atcab_read_bytes_zone() failed with ret=0x%08X\r\n", status);
+            (void)printf("atcab_read_bytes_zone() failed with ret=0x%08X\r\n", status);
             break;
         }
 
@@ -104,27 +104,27 @@ ATCA_STATUS set_chip_mode(uint8_t i2c_user_extra_add, uint8_t ttl_enable, uint8_
 
     if (!(ATECC608 == gCfg->devtype))
     {
-        printf("Current device doesn't support clock divider settings (only ATECC608)\r\n");
+        (void)printf("Current device doesn't support clock divider settings (only ATECC608)\r\n");
         return ATCA_GEN_FAIL;
     }
 
     status = is_config_locked(&config_locked);
     if (status != ATCA_SUCCESS)
     {
-        printf("is_device_locked() failed with ret=0x%08X\r\n", status);
+        (void)printf("is_device_locked() failed with ret=0x%08X\r\n", status);
         return status;
     }
 
     if (config_locked)
     {
-        printf("Current device is config locked. Can't change clock divider. ");
+        (void)printf("Current device is config locked. Can't change clock divider. ");
     }
 
     // Update the actual ATECC608 chip mode so it takes effect immediately
     status = atcab_init(gCfg);
     if (status != ATCA_SUCCESS)
     {
-        printf("atcab_init() failed with ret=0x%08X\r\n", status);
+        (void)printf("atcab_init() failed with ret=0x%08X\r\n", status);
         return status;
     }
 
@@ -134,13 +134,13 @@ ATCA_STATUS set_chip_mode(uint8_t i2c_user_extra_add, uint8_t ttl_enable, uint8_
         status = atcab_read_bytes_zone(ATCA_ZONE_CONFIG, 0, 16, config_word, 4);
         if (status != ATCA_SUCCESS)
         {
-            printf("atcab_read_bytes_zone() failed with ret=0x%08X\r\n", status);
+            (void)printf("atcab_read_bytes_zone() failed with ret=0x%08X\r\n", status);
             break;
         }
 
         if (config_locked)
         {
-            printf("Currently set to 0x%02X.\r\n", (int)(config_word[3] >> 3));
+            (void)printf("Currently set to 0x%02X.\r\n", (int)(config_word[3] >> 3));
             status = ATCA_GEN_FAIL;
             break;
         }
@@ -152,7 +152,7 @@ ATCA_STATUS set_chip_mode(uint8_t i2c_user_extra_add, uint8_t ttl_enable, uint8_
         status = atcab_write_bytes_zone(ATCA_ZONE_CONFIG, 0, 16, config_word, 4);
         if (status != ATCA_SUCCESS)
         {
-            printf("atcab_write_bytes_zone() failed with ret=0x%08X\r\n", status);
+            (void)printf("atcab_write_bytes_zone() failed with ret=0x%08X\r\n", status);
             break;
         }
 
@@ -160,13 +160,13 @@ ATCA_STATUS set_chip_mode(uint8_t i2c_user_extra_add, uint8_t ttl_enable, uint8_
         status = atcab_wakeup();
         if (status != ATCA_SUCCESS)
         {
-            printf("atcab_wakeup() failed with ret=0x%08X\r\n", status);
+            (void)printf("atcab_wakeup() failed with ret=0x%08X\r\n", status);
             break;
         }
         status = atcab_sleep();
         if (status != ATCA_SUCCESS)
         {
-            printf("atcab_sleep() failed with ret=0x%08X\r\n", status);
+            (void)printf("atcab_sleep() failed with ret=0x%08X\r\n", status);
             break;
         }
 
@@ -189,7 +189,7 @@ int set_clock_divider_m0(int argc, char* argv[])
 
     if (status == ATCA_SUCCESS)
     {
-        printf("Set device to clock divider M0 (0x%02X) and watchdog to 1.3s nominal.\r\n", ATCA_CHIPMODE_CLOCK_DIV_M0 >> 3);
+        (void)printf("Set device to clock divider M0 (0x%02X) and watchdog to 1.3s nominal.\r\n", ATCA_CHIPMODE_CLOCK_DIV_M0 >> 3);
     }
     return status;
 }
@@ -203,7 +203,7 @@ int set_clock_divider_m1(int argc, char* argv[])
 
     if (status == ATCA_SUCCESS)
     {
-        printf("Set device to clock divider M1 (0x%02X) and watchdog to 1.3s nominal.\r\n", ATCA_CHIPMODE_CLOCK_DIV_M1 >> 3);
+        (void)printf("Set device to clock divider M1 (0x%02X) and watchdog to 1.3s nominal.\r\n", ATCA_CHIPMODE_CLOCK_DIV_M1 >> 3);
     }
     return status;
 }
@@ -219,7 +219,7 @@ int set_clock_divider_m2(int argc, char* argv[])
 
     if (status == ATCA_SUCCESS)
     {
-        printf("Set device to clock divider M2 (0x%02X) and watchdog to 13s nominal.\r\n", ATCA_CHIPMODE_CLOCK_DIV_M2 >> 3);
+        (void)printf("Set device to clock divider M2 (0x%02X) and watchdog to 13s nominal.\r\n", ATCA_CHIPMODE_CLOCK_DIV_M2 >> 3);
     }
     return status;
 }

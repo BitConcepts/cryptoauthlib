@@ -25,13 +25,14 @@
 
 #include "third_party/unity/unity_fixture.h"
 #include "atca_test.h"
+
+#if (defined(ATCA_TNGTLS_SUPPORT) || defined(ATCA_TNGLORA_SUPPORT) || defined(ATCA_TFLEX_SUPPORT)) && !defined(DO_NOT_TEST_CERT) && ATCACERT_COMPCERT_EN
+
 #include "app/tng/tng_atca.h"
 #include "app/tng/tng_atcacert_client.h"
 #include "app/tng/tngtls_cert_def_1_signer.h"
 #include "app/tng/tngtls_cert_def_2_device.h"
 #include "atcacert/atcacert_def.h"
-
-#if (defined(ATCA_TNGTLS_SUPPORT) || defined(ATCA_TNGLORA_SUPPORT) || defined(ATCA_TFLEX_SUPPORT)) && !defined(DO_NOT_TEST_CERT) && ATCACERT_COMPCERT_EN
 
 TEST_GROUP(tng_atcacert_client);
 
@@ -543,6 +544,21 @@ TEST(tng_atcacert_client, tng_atcacert_device_public_key_cert)
     TEST_ASSERT_EQUAL(ATCACERT_E_SUCCESS, ret);
     TEST_ASSERT_EQUAL_MEMORY(cert_public_key, public_key, sizeof(public_key));
 }
+
+#if ATCAC_CERT_ADD_EN
+TEST(tng_atcacert_client, tng_atcacert_cert_add)
+{
+    int ret;
+    const atcacert_def_t* cert_def = NULL;
+    uint8_t sw_cert[1024];
+
+    ret = (int)tng_get_device_cert_def(&cert_def);
+    TEST_ASSERT_EQUAL(ATCACERT_E_SUCCESS, ret);
+
+    ret = atcacert_cert_add((void *)sw_cert, cert_def);
+    TEST_ASSERT_EQUAL(ATCA_SUCCESS, ret);
+}
+#endif
 #endif /* defined(ATCA_TNGTLS_SUPPORT) || defined(ATCA_TNGLORA_SUPPORT) || defined(ATCA_TFLEX_SUPPORT) */
 
 // *INDENT-OFF* - Preserve formatting
@@ -561,6 +577,9 @@ t_test_case_info tng_atcacert_client_unit_test_info[] =
     { REGISTER_TEST_CASE(tng_atcacert_client, tng_atcacert_read_device_cert_signer_with_ext_api),    atca_test_cond_ecc608 },
     { REGISTER_TEST_CASE(tng_atcacert_client, tng_atcacert_device_public_key_no_cert),  atca_test_cond_ecc608 },
     { REGISTER_TEST_CASE(tng_atcacert_client, tng_atcacert_device_public_key_cert),     atca_test_cond_ecc608 },
+#if ATCAC_CERT_ADD_EN
+    { REGISTER_TEST_CASE(tng_atcacert_client, tng_atcacert_cert_add),                   atca_test_cond_ecc608 },
+#endif
 #endif
     { (fp_test_case)NULL, NULL },
 };

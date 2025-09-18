@@ -23,6 +23,8 @@
 *****************************************************************************"""
 import os
 import glob
+import json
+import copy
 
 fileSymbolName = "CAL_FILE_SRC_"
 numFileCntr = 0
@@ -251,6 +253,151 @@ def check_if_file_exists(component, pattern):
                 return True
     return False
 
+def apply_symbol_visibility(srcComponent, data, parent_key=None, visible=False):
+    """
+    Apply setVisible/setValue to leaf nodes (bool True/False).
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Recurse deeper if dict
+            if isinstance(value, dict):
+                apply_symbol_visibility(srcComponent, value, key, visible)
+            elif isinstance(value, bool):
+                # leaf node: true/false
+                symbol = srcComponent.getSymbolByID(key)
+                if symbol is not None:
+                    symbol.setVisible(visible)
+                    symbol.setValue(value)
+            else:
+                # unexpected type, ignore or log
+                pass
+
+def get_unique_keys(ref, other):
+    """
+    Recursively compares two dicts.
+    Returns a dict with keys/values in `ref` but not in `other`.
+    """
+    if isinstance(ref, dict) and isinstance(other, dict):
+        unique = {}
+        for key, ref_val in ref.items():
+            if key not in other:
+                unique[key] = ref_val
+            else:
+                other_val = other[key]
+                sub_unique = get_unique_keys(ref_val, other_val)
+                if sub_unique:
+                    unique[key] = sub_unique
+        return unique
+
+    elif isinstance(ref, dict):
+        # other is not a dict -> everything in ref is unique
+        return ref
+
+    elif isinstance(ref, bool):
+        # ref is a leaf (True placeholder)
+        return ref if ref != other else None
+
+    else:
+        # unexpected type
+        return ref if ref != other else None
+
+
+def find_final_unique(device_data, device_ordered_list):
+    """
+    Compares device_data step-by-step with each device in device_ordered_list.
+    At each step, only keeps keys/values that are present in the current data
+    and not in the next device.
+    Returns only the keys/values that are unique to device_data after all comparisons.
+    """
+    import copy
+    current_unique = copy.deepcopy(device_data)
+    for device_name, other_device_data in device_ordered_list:
+        current_unique = get_unique_keys(current_unique, other_device_data)
+        if not current_unique:
+            break  # No unique keys left
+    return current_unique
+
+
+def apply_false_to_symbols(srcComponent, data, parent_key=None):
+    """
+    Traverse the JSON structure.
+    Always set setVisible and setValue = False for every symbol (leaf).
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Always set symbol False (ignore JSON value)
+            symbol = srcComponent.getSymbolByID(key)
+            if symbol is not None:
+                for func_name in ("setVisible", "setValue"):
+                    func = getattr(symbol, func_name, None)
+                    if callable(func):
+                        func(False)
+                        print("Setting {0}(False) for symbol '{1}'".format(func_name, key))
+            else:
+                print("Symbol '{0}' not found".format(key))
+
+            # Recurse deeper if nested dict
+            if isinstance(value, dict):
+                apply_false_to_symbols(srcComponent, value, key)
+
+def reset_config_disconnect(srcComponent, targetComponentID):
+    devices = ["atsha204a", "atsha206a", "atecc108a", "atecc508a", "atecc608",
+               "ecc204", "ta010", "sha104", "sha105", "ta100", "ta101"]
+
+    members = Database.getActiveComponentIDs()
+    componentList = [item.strip() for item in list(members)]
+
+    matches = [member for member in componentList if member in devices]
+    matchesUpper = [item.upper() for item in matches]
+    Log.writeInfoMessage("Matches:")
+    print(matchesUpper)
+
+    baseTargetID = targetComponentID.split('_')[0]
+    matchesUpper = [item for item in matchesUpper if item != baseTargetID]
+
+    with open(Module.getPath() + 'harmony/config/device_conf.json', 'r') as file:
+        data = json.load(file)
+
+    if not matchesUpper:
+        print("No matches, only 1 device present")
+
+        device_data = data.get('Default_config', None)
+        if device_data:
+            apply_false_to_symbols(srcComponent, device_data)
+
+    else:
+        device_data = data.get(baseTargetID, None)
+        print("device data")
+        print(device_data)
+
+        device_data_dict = [(name, data.get(name)) for name in matchesUpper if data.get(name)]
+        print("device_ordered_list")
+        print(device_data_dict)
+
+        cmpResult = find_final_unique(device_data, device_data_dict)
+        print("Comp result:")
+        print(json.dumps(cmpResult, indent=2))
+        apply_symbol_visibility(srcComponent, cmpResult)
+
+def get_value_by_device(srcComponent, data, parent_key=None):
+    """
+    Traverse the new JSON structure.
+    Always set setVisible and setValue = True for every symbol (leaf).
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Always set symbol true (ignore JSON value)
+            symbol = srcComponent.getSymbolByID(key)
+            if symbol is not None:
+                for func_name in ("setVisible", "setValue"):
+                    func = getattr(symbol, func_name, None)
+                    if callable(func):
+                        func(True)
+
+            # Recurse deeper if nested dict 
+            if isinstance(value, dict):
+                get_value_by_device(srcComponent, value, key)
+            # If it's just a bool leaf, we already handled it above by key
 
 def onAttachmentConnected(source, target):
     global _ca_dev_cnt
@@ -259,6 +406,16 @@ def onAttachmentConnected(source, target):
     srcConnectionID = source["id"]
 
     targetComponentID = target["component"].getID().upper()
+
+    with open(Module.getPath()+'harmony/config/device_conf.json', 'r') as file:
+        data = json.load(file)
+
+    device_data = data.get(targetComponentID, None)
+    if device_data:
+        get_value_by_device(srcComponent, device_data, targetComponentID)
+
+    # Closing file
+    file.close()
 
     # Check if a dependency got satisfied
     if srcConnectionID == 'CAL_LIB_CAP' and 'CRYPTOAUTHLIB' not in targetComponentID and '_' in targetComponentID:
@@ -271,6 +428,7 @@ def onAttachmentConnected(source, target):
             calTaConfig.setEnabled(True)
             if check_if_file_exists(srcComponent, 'talib_fce'):
                 calTaEnableFce = srcComponent.getSymbolByID('CAL_ENABLE_TA10x_FCE')
+                calTaEnableFce.setVisible(True)
                 calTaEnableFce.setValue(True)
         else:
             _ca_dev_cnt += 1
@@ -292,7 +450,20 @@ def onAttachmentConnected(source, target):
         updateFileEnable(srcComponent, _WOLFCRYPTO_FILES, True)
 
         calTaEnableAesAuth = srcComponent.getSymbolByID('CAL_ENABLE_TA10x_AES_AUTH')
+        calTaEnableAesAuth.setVisible(True)
         calTaEnableAesAuth.setValue(True)
+
+        calHostSwRand = srcComponent.getSymbolByID("cal_sw_rand")
+        calHostSwRand.setVisible(True)
+        calHostSwRand.setDefaultValue(True)
+
+        calHostSwSign = srcComponent.getSymbolByID("cal_sw_sign")
+        calHostSwSign.setVisible(True)
+        calHostSwSign.setDefaultValue(True)
+
+        calHostSwVerify = srcComponent.getSymbolByID("cal_sw_verify")
+        calHostSwVerify.setVisible(True)
+        calHostSwVerify.setDefaultValue(True)
 
     excludeFiles(srcComponent, _EXCL_FILES)
 
@@ -304,7 +475,7 @@ def onAttachmentDisconnected(source, target):
     srcComponent = source["component"]
     srcConnectionID = source["id"]
 
-    targetComponentID = target["component"].getID().upper()
+    targetComponentID = target["component"].getID().upper() 
 
     if srcConnectionID == 'CAL_LIB_CAP' and '_' in targetComponentID:
         calDeviceList = srcComponent.getSymbolByID('CAL_DEVICE_LIST_ENTRIES')
@@ -314,10 +485,12 @@ def onAttachmentDisconnected(source, target):
             if 0 == _ta_dev_cnt:
                 updateFileEnable(srcComponent, _TA_PATHS, False)
                 calTaEnableFce = srcComponent.getSymbolByID('CAL_ENABLE_TA10x_FCE')
+                calTaEnableFce.setVisible(False)
                 calTaEnableFce.setValue(False)
                 calTaConfig = srcComponent.getSymbolByID('TALIB_CONFIG_DATA')
                 calTaConfig.setEnabled(False)
                 calTaEnableAesAuth = srcComponent.getSymbolByID('CAL_ENABLE_TA10x_AES_AUTH')
+                calTaEnableAesAuth.setVisible(True)
                 calTaEnableAesAuth.setValue(False)
         else:
             _ca_dev_cnt -= 1
@@ -326,6 +499,7 @@ def onAttachmentDisconnected(source, target):
                     updateFileEnable(srcComponent, _SHA206_PATHS, False)
                 updateFileEnable(srcComponent, _CA_PATHS, False)
 
+    reset_config_disconnect(srcComponent, targetComponentID)
 
     if srcConnectionID == 'FreeRTOS':
         calEnableRtos = srcComponent.getSymbolByID('CAL_ENABLE_RTOS')
@@ -341,8 +515,20 @@ def onAttachmentDisconnected(source, target):
         updateFileEnable(srcComponent, _WOLFCRYPTO_FILES, False)
 
         calTaEnableAesAuth = srcComponent.getSymbolByID('CAL_ENABLE_TA10x_AES_AUTH')
+        calTaEnableAesAuth.setVisible(False)
         calTaEnableAesAuth.setValue(False)
 
+        calHostSwRand = srcComponent.getSymbolByID("cal_sw_rand")
+        calHostSwRand.setVisible(False)
+        calHostSwRand.setDefaultValue(False)
+
+        calHostSwSign = srcComponent.getSymbolByID("cal_sw_sign")
+        calHostSwSign.setVisible(False)
+        calHostSwSign.setDefaultValue(False)
+
+        calHostSwVerify = srcComponent.getSymbolByID("cal_sw_verify")
+        calHostSwVerify.setVisible(False)
+        calHostSwVerify.setDefaultValue(False)
 
 
 def instantiateComponent(calComponent):
@@ -443,415 +629,415 @@ def instantiateComponent(calComponent):
     # Symmetric Cryptography Commands
     symmetricCommands = calComponent.createMenuSymbol("cal_symmetric_commands", None)
     symmetricCommands.setLabel("Symmetric Cryptography Commands")
-    symmetricCommands.setVisible(True)
+    symmetricCommands.setVisible(False)
 
     # AES
     calAesEnabledSymbol = calComponent.createBooleanSymbol("cal_aes", symmetricCommands)
     calAesEnabledSymbol.setLabel("Support AES?")
     calAesEnabledSymbol.setDescription("Enable support for AES Command")
-    calAesEnabledSymbol.setVisible(True)
-    calAesEnabledSymbol.setDefaultValue(True)
+    calAesEnabledSymbol.setVisible(False)
+    calAesEnabledSymbol.setDefaultValue(False)
 
     calAesEcbEnabledSymbol = calComponent.createBooleanSymbol("cal_aes_ecb", calAesEnabledSymbol)
     calAesEcbEnabledSymbol.setLabel("Support ECB Mode?")
     calAesEcbEnabledSymbol.setDescription("Enable support for AES ECB Mode")
-    calAesEcbEnabledSymbol.setVisible(True)
-    calAesEcbEnabledSymbol.setDefaultValue(True)
+    calAesEcbEnabledSymbol.setVisible(False)
+    calAesEcbEnabledSymbol.setDefaultValue(False)
     calAesEcbEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_aes"])
 
     calAesGfmEnabledSymbol = calComponent.createBooleanSymbol("cal_aes_gfm", calAesEnabledSymbol)
     calAesGfmEnabledSymbol.setLabel("Support GFM Mode?")
     calAesGfmEnabledSymbol.setDescription("Enable support for AES GFM Mode")
-    calAesGfmEnabledSymbol.setVisible(True)
-    calAesGfmEnabledSymbol.setDefaultValue(True)
+    calAesGfmEnabledSymbol.setVisible(False)
+    calAesGfmEnabledSymbol.setDefaultValue(False)
     calAesGfmEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_aes"])
 
     calAesGcmEnabledSymbol = calComponent.createBooleanSymbol("cal_aes_gcm", calAesEnabledSymbol)
     calAesGcmEnabledSymbol.setLabel("Support GCM Mode?")
     calAesGcmEnabledSymbol.setDescription("Enable support for AES GCM Mode")
-    calAesGcmEnabledSymbol.setVisible(True)
-    calAesGcmEnabledSymbol.setDefaultValue(True)
+    calAesGcmEnabledSymbol.setVisible(False)
+    calAesGcmEnabledSymbol.setDefaultValue(False)
     calAesGcmEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_aes"])
 
     # CHECKMAC
     calCheckmacEnabledSymbol = calComponent.createBooleanSymbol("cal_checkmac", symmetricCommands)
     calCheckmacEnabledSymbol.setLabel("Support Checkmac?")
     calCheckmacEnabledSymbol.setDescription("Enable support for CHECKMAC Command")
-    calCheckmacEnabledSymbol.setVisible(True)
-    calCheckmacEnabledSymbol.setDefaultValue(True)
+    calCheckmacEnabledSymbol.setVisible(False)
+    calCheckmacEnabledSymbol.setDefaultValue(False)
 
     # GENDIG
     calGendigEnabledSymbol = calComponent.createBooleanSymbol("cal_gendig", symmetricCommands)
     calGendigEnabledSymbol.setLabel("Support Gendig?")
     calGendigEnabledSymbol.setDescription("Enable support for GENDIG Command")
-    calGendigEnabledSymbol.setVisible(True)
-    calGendigEnabledSymbol.setDefaultValue(True)
+    calGendigEnabledSymbol.setVisible(False)
+    calGendigEnabledSymbol.setDefaultValue(False)
 
     # KDF
     calKdfEnabledSymbol = calComponent.createBooleanSymbol("cal_kdf", symmetricCommands)
     calKdfEnabledSymbol.setLabel("Support KDF?")
     calKdfEnabledSymbol.setDescription("Enable support for KDF Command")
-    calKdfEnabledSymbol.setVisible(True)
-    calKdfEnabledSymbol.setDefaultValue(True)
+    calKdfEnabledSymbol.setVisible(False)
+    calKdfEnabledSymbol.setDefaultValue(False)
 
     # MAC
     calMacEnabledSymbol = calComponent.createBooleanSymbol("cal_mac", symmetricCommands)
     calMacEnabledSymbol.setLabel("Support MAC?")
     calMacEnabledSymbol.setDescription("Enable support for MAC Command")
-    calMacEnabledSymbol.setVisible(True)
-    calMacEnabledSymbol.setDefaultValue(True)
+    calMacEnabledSymbol.setVisible(False)
+    calMacEnabledSymbol.setDefaultValue(False)
 
     # HMAC
     calHmacEnabledSymbol = calComponent.createBooleanSymbol("cal_hmac", symmetricCommands)
     calHmacEnabledSymbol.setLabel("Support HMAC?")
     calHmacEnabledSymbol.setDescription("Enable support for Hmac Command")
-    calHmacEnabledSymbol.setVisible(True)
-    calHmacEnabledSymbol.setDefaultValue(True)
+    calHmacEnabledSymbol.setVisible(False)
+    calHmacEnabledSymbol.setDefaultValue(False)
 
     # Asymmetric Cryptography Commands
     asymmetricCommands = calComponent.createMenuSymbol("cal_asymmetric_commands", None)
     asymmetricCommands.setLabel("Asymmetric Cryptography Commands")
-    asymmetricCommands.setVisible(True)
+    asymmetricCommands.setVisible(False)
 
     # ECDH
     calEcdhEnabledSymbol = calComponent.createBooleanSymbol("cal_ecdh", asymmetricCommands)
     calEcdhEnabledSymbol.setLabel("Support ECDH?")
     calEcdhEnabledSymbol.setDescription("Enable support for ECDH Command")
-    calEcdhEnabledSymbol.setVisible(True)
-    calEcdhEnabledSymbol.setDefaultValue(True)
+    calEcdhEnabledSymbol.setVisible(False)
+    calEcdhEnabledSymbol.setDefaultValue(False)
 
     calEcdhEncEnabledSymbol = calComponent.createBooleanSymbol("cal_ecdh_enc", calEcdhEnabledSymbol)
     calEcdhEncEnabledSymbol.setLabel("Support ECDH Encryption?")
     calEcdhEncEnabledSymbol.setDescription("Enable support for ECDH ENC")
-    calEcdhEncEnabledSymbol.setVisible(True)
-    calEcdhEncEnabledSymbol.setDefaultValue(True)
+    calEcdhEncEnabledSymbol.setVisible(False)
+    calEcdhEncEnabledSymbol.setDefaultValue(False)
     calEcdhEncEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_ecdh"])
 
     # GENKEY
     calGenkeyEnabledSymbol = calComponent.createBooleanSymbol("cal_genkey", asymmetricCommands)
     calGenkeyEnabledSymbol.setLabel("Support Genkey?")
     calGenkeyEnabledSymbol.setDescription("Enable support for Genkey Command")
-    calGenkeyEnabledSymbol.setVisible(True)
-    calGenkeyEnabledSymbol.setDefaultValue(True)
+    calGenkeyEnabledSymbol.setVisible(False)
+    calGenkeyEnabledSymbol.setDefaultValue(False)
 
     calGenkeyMacEnabledSymbol = calComponent.createBooleanSymbol("cal_genkey_mac", calGenkeyEnabledSymbol)
     calGenkeyMacEnabledSymbol.setLabel("Support Genkey MAC?")
     calGenkeyMacEnabledSymbol.setDescription("Enable support for GENKEY MAC")
-    calGenkeyMacEnabledSymbol.setVisible(True)
-    calGenkeyMacEnabledSymbol.setDefaultValue(True)
+    calGenkeyMacEnabledSymbol.setVisible(False)
+    calGenkeyMacEnabledSymbol.setDefaultValue(False)
 
     # SIGN
     calSignEnabledSymbol = calComponent.createBooleanSymbol("cal_sign", asymmetricCommands)
     calSignEnabledSymbol.setLabel("Support Sign?")
     calSignEnabledSymbol.setDescription("Enable support for SIGN Command")
-    calSignEnabledSymbol.setVisible(True)
-    calSignEnabledSymbol.setDefaultValue(True)
+    calSignEnabledSymbol.setVisible(False)
+    calSignEnabledSymbol.setDefaultValue(False)
 
     calSignInternalEnabledSymbol = calComponent.createBooleanSymbol("cal_sign_internal", calSignEnabledSymbol)
     calSignInternalEnabledSymbol.setLabel("Support Sign Internal?")
     calSignInternalEnabledSymbol.setDescription("Enable support for Sign Internal")
-    calSignInternalEnabledSymbol.setVisible(True)
-    calSignInternalEnabledSymbol.setDefaultValue(True)
+    calSignInternalEnabledSymbol.setVisible(False)
+    calSignInternalEnabledSymbol.setDefaultValue(False)
     calSignInternalEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sign"])
 
     # VERIFY
     calVerifyEnabledSymbol = calComponent.createBooleanSymbol("cal_verify", asymmetricCommands)
     calVerifyEnabledSymbol.setLabel("Support Verify?")
     calVerifyEnabledSymbol.setDescription("Enable support for VERIFY Command")
-    calVerifyEnabledSymbol.setVisible(True)
-    calVerifyEnabledSymbol.setDefaultValue(True)
+    calVerifyEnabledSymbol.setVisible(False)
+    calVerifyEnabledSymbol.setDefaultValue(False)
 
     calVerifyStoredEnabledSymbol = calComponent.createBooleanSymbol("cal_verify_stored", calVerifyEnabledSymbol)
     calVerifyStoredEnabledSymbol.setLabel("Support Verify Stored?")
     calVerifyStoredEnabledSymbol.setDescription("Enable support for Verify Stored")
-    calVerifyStoredEnabledSymbol.setVisible(True)
-    calVerifyStoredEnabledSymbol.setDefaultValue(True)
+    calVerifyStoredEnabledSymbol.setVisible(False)
+    calVerifyStoredEnabledSymbol.setDefaultValue(False)
     calVerifyStoredEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_verify"])
 
     calVerifyExternEnabledSymbol = calComponent.createBooleanSymbol("cal_verify_extern", calVerifyEnabledSymbol)
     calVerifyExternEnabledSymbol.setLabel("Support Verify Extern?")
     calVerifyExternEnabledSymbol.setDescription("Enable support for Verify Extern")
-    calVerifyExternEnabledSymbol.setVisible(True)
-    calVerifyExternEnabledSymbol.setDefaultValue(True)
+    calVerifyExternEnabledSymbol.setVisible(False)
+    calVerifyExternEnabledSymbol.setDefaultValue(False)
     calVerifyExternEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_verify"])
 
     calVerifyValidateEnabledSymbol = calComponent.createBooleanSymbol("cal_verify_validate", calVerifyEnabledSymbol)
     calVerifyValidateEnabledSymbol.setLabel("Support Verify Validate?")
     calVerifyValidateEnabledSymbol.setDescription("Enable support for Verify Validate")
-    calVerifyValidateEnabledSymbol.setVisible(True)
-    calVerifyValidateEnabledSymbol.setDefaultValue(True)
+    calVerifyValidateEnabledSymbol.setVisible(False)
+    calVerifyValidateEnabledSymbol.setDefaultValue(False)
     calVerifyValidateEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_verify"])
 
     calVerifyMacEnabledSymbol = calComponent.createBooleanSymbol("cal_verify_mac", calVerifyEnabledSymbol)
     calVerifyMacEnabledSymbol.setLabel("Support Verify Mac?")
     calVerifyMacEnabledSymbol.setDescription("Enable support for Verify Mac")
-    calVerifyMacEnabledSymbol.setVisible(True)
-    calVerifyMacEnabledSymbol.setDefaultValue(True)
+    calVerifyMacEnabledSymbol.setVisible(False)
+    calVerifyMacEnabledSymbol.setDefaultValue(False)
     calVerifyMacEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_verify"])
 
     # General Device Commands
     deviceCommands = calComponent.createMenuSymbol("cal_device_commands", None)
     deviceCommands.setLabel("General Device Commands")
-    deviceCommands.setVisible(True)
+    deviceCommands.setVisible(False)
 
     # COUNTER
     calCounterEnabledSymbol = calComponent.createBooleanSymbol("cal_counter", deviceCommands)
     calCounterEnabledSymbol.setLabel("Support Counter?")
     calCounterEnabledSymbol.setDescription("Enable support for COUNTER Command")
-    calCounterEnabledSymbol.setVisible(True)
-    calCounterEnabledSymbol.setDefaultValue(True)
+    calCounterEnabledSymbol.setVisible(False)
+    calCounterEnabledSymbol.setDefaultValue(False)
 
     # DELETE
     calDeleteEnabledSymbol = calComponent.createBooleanSymbol("cal_delete", deviceCommands)
     calDeleteEnabledSymbol.setLabel("Support Delete?")
     calDeleteEnabledSymbol.setDescription("Enable support for Delete Command")
-    calDeleteEnabledSymbol.setVisible(True)
+    calDeleteEnabledSymbol.setVisible(False)
     calDeleteEnabledSymbol.setDefaultValue(False)
 
     # DERIVEKEY
     calDerivekeyEnabledSymbol = calComponent.createBooleanSymbol("cal_derivekey", deviceCommands)
     calDerivekeyEnabledSymbol.setLabel("Support Derivekey?")
     calDerivekeyEnabledSymbol.setDescription("Enable support for Derivekey Command")
-    calDerivekeyEnabledSymbol.setVisible(True)
-    calDerivekeyEnabledSymbol.setDefaultValue(True)
+    calDerivekeyEnabledSymbol.setVisible(False)
+    calDerivekeyEnabledSymbol.setDefaultValue(False)
 
     # INFO
     calInfoEnabledSymbol = calComponent.createBooleanSymbol("cal_info", deviceCommands)
     calInfoEnabledSymbol.setLabel("Support Info?")
     calInfoEnabledSymbol.setDescription("Enable support for INFO Command")
-    calInfoEnabledSymbol.setVisible(True)
-    calInfoEnabledSymbol.setDefaultValue(True)
+    calInfoEnabledSymbol.setVisible(False)
+    calInfoEnabledSymbol.setDefaultValue(False)
 
     # LOCK
     calLockEnabledSymbol = calComponent.createBooleanSymbol("cal_lock", deviceCommands)
     calLockEnabledSymbol.setLabel("Support Lock?")
     calLockEnabledSymbol.setDescription("Enable support for LOCK Command")
-    calLockEnabledSymbol.setVisible(True)
-    calLockEnabledSymbol.setDefaultValue(True)
+    calLockEnabledSymbol.setVisible(False)
+    calLockEnabledSymbol.setDefaultValue(False)
 
     # NONCE
     calNonceEnabledSymbol = calComponent.createBooleanSymbol("cal_nonce", deviceCommands)
     calNonceEnabledSymbol.setLabel("Support Nonce?")
     calNonceEnabledSymbol.setDescription("Enable support for Nonce Command")
-    calNonceEnabledSymbol.setVisible(True)
-    calNonceEnabledSymbol.setDefaultValue(True)
+    calNonceEnabledSymbol.setVisible(False)
+    calNonceEnabledSymbol.setDefaultValue(False)
 
     # PRIVWRITE
     calPrivWriteEnabledSymbol = calComponent.createBooleanSymbol("cal_privwrite", deviceCommands)
     calPrivWriteEnabledSymbol.setLabel("Support PrivWrite?")
     calPrivWriteEnabledSymbol.setDescription("Enable support for PrivWrite Command")
-    calPrivWriteEnabledSymbol.setVisible(True)
-    calPrivWriteEnabledSymbol.setDefaultValue(True)
+    calPrivWriteEnabledSymbol.setVisible(False)
+    calPrivWriteEnabledSymbol.setDefaultValue(False)
 
     # RANDOM
     calRandomEnabledSymbol = calComponent.createBooleanSymbol("cal_random", deviceCommands)
     calRandomEnabledSymbol.setLabel("Support Random?")
     calRandomEnabledSymbol.setDescription("Enable support for Random Command")
-    calRandomEnabledSymbol.setVisible(True)
-    calRandomEnabledSymbol.setDefaultValue(True)
+    calRandomEnabledSymbol.setVisible(False)
+    calRandomEnabledSymbol.setDefaultValue(False)
 
     # READ
     calReadEnabledSymbol = calComponent.createBooleanSymbol("cal_read", deviceCommands)
     calReadEnabledSymbol.setLabel("Support Read?")
     calReadEnabledSymbol.setDescription("Enable support for Read Command")
-    calReadEnabledSymbol.setVisible(True)
-    calReadEnabledSymbol.setDefaultValue(True)
+    calReadEnabledSymbol.setVisible(False)
+    calReadEnabledSymbol.setDefaultValue(False)
 
     calReadEncEnabledSymbol = calComponent.createBooleanSymbol("cal_read_enc", calReadEnabledSymbol)
     calReadEncEnabledSymbol.setLabel("Support Encrypted Read?")
     calReadEncEnabledSymbol.setDescription("Enable support for READ ENC")
-    calReadEncEnabledSymbol.setVisible(True)
-    calReadEncEnabledSymbol.setDefaultValue(True)
+    calReadEncEnabledSymbol.setVisible(False)
+    calReadEncEnabledSymbol.setDefaultValue(False)
     calReadEncEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_read"])
 
     # SECUREBOOT
     calSecurebootEnabledSymbol = calComponent.createBooleanSymbol("cal_secureboot", deviceCommands)
     calSecurebootEnabledSymbol.setLabel("Support Secureboot?")
     calSecurebootEnabledSymbol.setDescription("Enable support for Secureboot Command")
-    calSecurebootEnabledSymbol.setVisible(True)
-    calSecurebootEnabledSymbol.setDefaultValue(True)
+    calSecurebootEnabledSymbol.setVisible(False)
+    calSecurebootEnabledSymbol.setDefaultValue(False)
 
     calSecurebootMacEnabledSymbol = calComponent.createBooleanSymbol("cal_secureboot_mac", calSecurebootEnabledSymbol)
     calSecurebootMacEnabledSymbol.setLabel("Support Secureboot MAC?")
     calSecurebootMacEnabledSymbol.setDescription("Enable support for SECUREBOOT MAC")
-    calSecurebootMacEnabledSymbol.setVisible(True)
-    calSecurebootMacEnabledSymbol.setDefaultValue(True)
+    calSecurebootMacEnabledSymbol.setVisible(False)
+    calSecurebootMacEnabledSymbol.setDefaultValue(False)
     calSecurebootMacEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_secureboot"])
 
     # SELFTEST
     calSelftestEnabledSymbol = calComponent.createBooleanSymbol("cal_selftest", deviceCommands)
     calSelftestEnabledSymbol.setLabel("Support Selftest?")
     calSelftestEnabledSymbol.setDescription("Enable support for Selftest Command")
-    calSelftestEnabledSymbol.setVisible(True)
-    calSelftestEnabledSymbol.setDefaultValue(True)
+    calSelftestEnabledSymbol.setVisible(False)
+    calSelftestEnabledSymbol.setDefaultValue(False)
 
     # SHA
     calShaEnabledSymbol = calComponent.createBooleanSymbol("cal_sha", deviceCommands)
     calShaEnabledSymbol.setLabel("Support SHA?")
     calShaEnabledSymbol.setDescription("Enable support for Sha Command")
-    calShaEnabledSymbol.setVisible(True)
-    calShaEnabledSymbol.setDefaultValue(True)
+    calShaEnabledSymbol.setVisible(False)
+    calShaEnabledSymbol.setDefaultValue(False)
 
     calShaHmacEnabledSymbol = calComponent.createBooleanSymbol("cal_sha_hmac", calShaEnabledSymbol)
     calShaHmacEnabledSymbol.setLabel("Support SHA HMAC?")
     calShaHmacEnabledSymbol.setDescription("Enable support for SHA HMAC")
-    calShaHmacEnabledSymbol.setVisible(True)
-    calShaHmacEnabledSymbol.setDefaultValue(True)
+    calShaHmacEnabledSymbol.setVisible(False)
+    calShaHmacEnabledSymbol.setDefaultValue(False)
     calShaHmacEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sha"])
 
     calShaContextEnabledSymbol = calComponent.createBooleanSymbol("cal_sha_context", calShaEnabledSymbol)
     calShaContextEnabledSymbol.setLabel("Support SHA Context?")
     calShaContextEnabledSymbol.setDescription("Enable support for SHA CONTEXT")
-    calShaContextEnabledSymbol.setVisible(True)
-    calShaContextEnabledSymbol.setDefaultValue(True)
+    calShaContextEnabledSymbol.setVisible(False)
+    calShaContextEnabledSymbol.setDefaultValue(False)
     calShaContextEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sha"])
 
     # UPDATEEXTRA
     calUpdateextraEnabledSymbol = calComponent.createBooleanSymbol("cal_updateextra", deviceCommands)
     calUpdateextraEnabledSymbol.setLabel("Support UpdateExtra?")
     calUpdateextraEnabledSymbol.setDescription("Enable support for Updateextra Command")
-    calUpdateextraEnabledSymbol.setVisible(True)
-    calUpdateextraEnabledSymbol.setDefaultValue(True)
+    calUpdateextraEnabledSymbol.setVisible(False)
+    calUpdateextraEnabledSymbol.setDefaultValue(False)
 
     # WRITE
     calWriteEnabledSymbol = calComponent.createBooleanSymbol("cal_write", deviceCommands)
     calWriteEnabledSymbol.setLabel("Support Write?")
     calWriteEnabledSymbol.setDescription("Enable support for Write Command")
-    calWriteEnabledSymbol.setVisible(True)
-    calWriteEnabledSymbol.setDefaultValue(True)
+    calWriteEnabledSymbol.setVisible(False)
+    calWriteEnabledSymbol.setDefaultValue(False)
 
     calWriteEncEnabledSymbol = calComponent.createBooleanSymbol("cal_write_enc", calWriteEnabledSymbol)
     calWriteEncEnabledSymbol.setLabel("Support Encrypted Write?")
     calWriteEncEnabledSymbol.setDescription("Enable support for WRITE ENC")
-    calWriteEncEnabledSymbol.setVisible(True)
-    calWriteEncEnabledSymbol.setDefaultValue(True)
+    calWriteEncEnabledSymbol.setVisible(False)
+    calWriteEncEnabledSymbol.setDefaultValue(False)
     calWriteEncEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_write"])
 
     # Configurations for atcacert module
     calAtcacertConfig = calComponent.createMenuSymbol("cal_atcacert_config", None)
     calAtcacertConfig.setLabel("Atcacert Configurations")
-    calAtcacertConfig.setVisible(True)
+    calAtcacertConfig.setVisible(False)
 
     calAtcacertFullStoredSymbol = calComponent.createBooleanSymbol("cal_atcacert_full_stored", calAtcacertConfig)
     calAtcacertFullStoredSymbol.setLabel("Support Full Stored Certificate?")
     calAtcacertFullStoredSymbol.setDescription("Enable support for Full Stored Certificate")
-    calAtcacertFullStoredSymbol.setVisible(True)
-    calAtcacertFullStoredSymbol.setDefaultValue(True)
+    calAtcacertFullStoredSymbol.setVisible(False)
+    calAtcacertFullStoredSymbol.setDefaultValue(False)
 
     calAtcacertCompcertSymbol = calComponent.createBooleanSymbol("cal_atcacert_compressed", calAtcacertConfig)
     calAtcacertCompcertSymbol.setLabel("Support Compressed Certificate?")
     calAtcacertCompcertSymbol.setDescription("Enable support for Compressed Certificate")
-    calAtcacertCompcertSymbol.setVisible(True)
-    calAtcacertCompcertSymbol.setDefaultValue(True)
+    calAtcacertCompcertSymbol.setVisible(False)
+    calAtcacertCompcertSymbol.setDefaultValue(False)
 
     # Configurations for crypto implementations external library support
     calCryptoConfig = calComponent.createMenuSymbol("cal_crypto_config", None)
     calCryptoConfig.setLabel("Crypto Configurations")
-    calCryptoConfig.setVisible(True)
+    calCryptoConfig.setVisible(False)
 
     # Crypto HW AES
     calHwAesEnabledSymbol = calComponent.createBooleanSymbol("cal_hw_aes", calCryptoConfig)
     calHwAesEnabledSymbol.setLabel("Support Crypto Hw AES?")
     calHwAesEnabledSymbol.setDescription("Enable support for HArdware AES")
-    calHwAesEnabledSymbol.setVisible(True)
-    calHwAesEnabledSymbol.setDefaultValue(True)
+    calHwAesEnabledSymbol.setVisible(False)
+    calHwAesEnabledSymbol.setDefaultValue(False)
 
     # Crypto HW AES-CBC
     calCryptoHWAESCBCEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_cbc", calHwAesEnabledSymbol)
     calCryptoHWAESCBCEnabledSymbol.setLabel("Support Crypto Hw AES-CBC?")
     calCryptoHWAESCBCEnabledSymbol.setDescription("Enable support for Hardware AES-CBC")
-    calCryptoHWAESCBCEnabledSymbol.setVisible(True)
-    calCryptoHWAESCBCEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCBCEnabledSymbol.setVisible(False)
+    calCryptoHWAESCBCEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCBCEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_hw_aes"])
 
     calCryptoHWAESCBCEncEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_cbc_encrypt", calCryptoHWAESCBCEnabledSymbol)
     calCryptoHWAESCBCEncEnabledSymbol.setLabel("Support Crypto Hw AES-CBC Encrypt?")
     calCryptoHWAESCBCEncEnabledSymbol.setDescription("Enable support for Hardware AES-CBC Encrypt")
-    calCryptoHWAESCBCEncEnabledSymbol.setVisible(True)
-    calCryptoHWAESCBCEncEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCBCEncEnabledSymbol.setVisible(False)
+    calCryptoHWAESCBCEncEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCBCEncEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_crypto_aes_cbc"])
 
     calCryptoHWAESCBCDecEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_cbc_decrypt", calCryptoHWAESCBCEnabledSymbol)
     calCryptoHWAESCBCDecEnabledSymbol.setLabel("Support Crypto Hw AES-CBC Decrypt?")
     calCryptoHWAESCBCDecEnabledSymbol.setDescription("Enable support for Hardware AES-CBC Decrypt")
-    calCryptoHWAESCBCDecEnabledSymbol.setVisible(True)
-    calCryptoHWAESCBCDecEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCBCDecEnabledSymbol.setVisible(False)
+    calCryptoHWAESCBCDecEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCBCDecEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_crypto_aes_cbc"])
 
     # Crypto HW AES-CBCMAC
     calCryptoHWAESCBCMACEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_cbcmac", calHwAesEnabledSymbol)
     calCryptoHWAESCBCMACEnabledSymbol.setLabel("Support Crypto Hw AES-CBCMAC?")
     calCryptoHWAESCBCMACEnabledSymbol.setDescription("Enable support for Hardware AES-CBCMAC")
-    calCryptoHWAESCBCMACEnabledSymbol.setVisible(True)
-    calCryptoHWAESCBCMACEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCBCMACEnabledSymbol.setVisible(False)
+    calCryptoHWAESCBCMACEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCBCMACEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_hw_aes"])
 
     # Crypto HW AES-CTR
     calCryptoHWAESCTREnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_ctr", calHwAesEnabledSymbol)
     calCryptoHWAESCTREnabledSymbol.setLabel("Support Crypto Hw AES-CTR?")
     calCryptoHWAESCTREnabledSymbol.setDescription("Enable support for Hardware AES-CTR")
-    calCryptoHWAESCTREnabledSymbol.setVisible(True)
-    calCryptoHWAESCTREnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCTREnabledSymbol.setVisible(False)
+    calCryptoHWAESCTREnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCTREnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_hw_aes"])
 
     calCryptoHWAESCTRRANDEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_ctr_rand_iv", calCryptoHWAESCTREnabledSymbol)
     calCryptoHWAESCTRRANDEnabledSymbol.setLabel("Support Crypto Hw AES-CTR Random Nonce?")
     calCryptoHWAESCTRRANDEnabledSymbol.setDescription("Enable support for Hardware AES-CTR Random Nonce")
-    calCryptoHWAESCTRRANDEnabledSymbol.setVisible(True)
-    calCryptoHWAESCTRRANDEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCTRRANDEnabledSymbol.setVisible(False)
+    calCryptoHWAESCTRRANDEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCTRRANDEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_crypto_aes_ctr"])
 
     # Crypto HW AES-CCM
     calCryptoHWAESCCMEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_ccm", calHwAesEnabledSymbol)
     calCryptoHWAESCCMEnabledSymbol.setLabel("Support Crypto Hw AES-CCM?")
     calCryptoHWAESCCMEnabledSymbol.setDescription("Enable support for Hardware AES-CCM")
-    calCryptoHWAESCCMEnabledSymbol.setVisible(True)
-    calCryptoHWAESCCMEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCCMEnabledSymbol.setVisible(False)
+    calCryptoHWAESCCMEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCCMEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_hw_aes"])
 
     calCryptoHWAESCCMRANDEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_ccm_rand_iv", calCryptoHWAESCCMEnabledSymbol)
     calCryptoHWAESCCMRANDEnabledSymbol.setLabel("Support Crypto Hw AES-CCM Random Nonce?")
     calCryptoHWAESCCMRANDEnabledSymbol.setDescription("Enable support for Hardware AES-CCM Random Nonce")
-    calCryptoHWAESCCMRANDEnabledSymbol.setVisible(True)
-    calCryptoHWAESCCMRANDEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCCMRANDEnabledSymbol.setVisible(False)
+    calCryptoHWAESCCMRANDEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCCMRANDEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_crypto_aes_ccm"])
 
     # Crypto HW AES-CMAC
     calCryptoHWAESCMACEnabledSymbol = calComponent.createBooleanSymbol("cal_crypto_aes_cmac", calHwAesEnabledSymbol)
     calCryptoHWAESCMACEnabledSymbol.setLabel("Support Crypto Hw AES-CMAC?")
     calCryptoHWAESCMACEnabledSymbol.setDescription("Enable support for Hardware AES-CMAC")
-    calCryptoHWAESCMACEnabledSymbol.setVisible(True)
-    calCryptoHWAESCMACEnabledSymbol.setDefaultValue(True)
+    calCryptoHWAESCMACEnabledSymbol.setVisible(False)
+    calCryptoHWAESCMACEnabledSymbol.setDefaultValue(False)
     calCryptoHWAESCMACEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_hw_aes"])
 
     # Crypto SW SHA
     calSwShaEnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sha", calCryptoConfig)
     calSwShaEnabledSymbol.setLabel("Support Crypto Sw SHA?")
     calSwShaEnabledSymbol.setDescription("Enable support for Software SHA")
-    calSwShaEnabledSymbol.setVisible(True)
-    calSwShaEnabledSymbol.setDefaultValue(True)
+    calSwShaEnabledSymbol.setVisible(False)
+    calSwShaEnabledSymbol.setDefaultValue(False)
 
     # Crypto SW SHA1
     calCryptoSwSha1EnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sha1", calSwShaEnabledSymbol)
     calCryptoSwSha1EnabledSymbol.setLabel("Support Crypto Sw SHA1?")
     calCryptoSwSha1EnabledSymbol.setDescription("Enable support for Software SHA1")
-    calCryptoSwSha1EnabledSymbol.setVisible(True)
-    calCryptoSwSha1EnabledSymbol.setDefaultValue(True)
+    calCryptoSwSha1EnabledSymbol.setVisible(False)
+    calCryptoSwSha1EnabledSymbol.setDefaultValue(False)
     calCryptoSwSha1EnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sw_sha"])
 
     # Crypto SW SHA256
     calCryptoSwSha2EnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sha256", calSwShaEnabledSymbol)
     calCryptoSwSha2EnabledSymbol.setLabel("Support Crypto Sw SHA256?")
     calCryptoSwSha2EnabledSymbol.setDescription("Enable support for Software SHA256")
-    calCryptoSwSha2EnabledSymbol.setVisible(True)
-    calCryptoSwSha2EnabledSymbol.setDefaultValue(True)
+    calCryptoSwSha2EnabledSymbol.setVisible(False)
+    calCryptoSwSha2EnabledSymbol.setDefaultValue(False)
     calCryptoSwSha2EnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sw_sha"])
 
     # Crypto SW SHA384
     calCryptoSwSha2EnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sha384", calSwShaEnabledSymbol)
     calCryptoSwSha2EnabledSymbol.setLabel("Support Crypto Sw SHA384?")
     calCryptoSwSha2EnabledSymbol.setDescription("Enable support for Software SHA384")
-    calCryptoSwSha2EnabledSymbol.setVisible(True)
+    calCryptoSwSha2EnabledSymbol.setVisible(False)
     calCryptoSwSha2EnabledSymbol.setDefaultValue(False)
     calCryptoSwSha2EnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sw_sha"])
 
@@ -859,7 +1045,7 @@ def instantiateComponent(calComponent):
     calCryptoSwSha2EnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sha512", calSwShaEnabledSymbol)
     calCryptoSwSha2EnabledSymbol.setLabel("Support Crypto Sw SHA512?")
     calCryptoSwSha2EnabledSymbol.setDescription("Enable support for Software SHA512")
-    calCryptoSwSha2EnabledSymbol.setVisible(True)
+    calCryptoSwSha2EnabledSymbol.setVisible(False)
     calCryptoSwSha2EnabledSymbol.setDefaultValue(False)
     calCryptoSwSha2EnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sw_sha"])
 
@@ -867,46 +1053,46 @@ def instantiateComponent(calComponent):
     calCryptoSwSha2HmacEnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sha2_hmac", calSwShaEnabledSymbol)
     calCryptoSwSha2HmacEnabledSymbol.setLabel("Support Crypto Sw SHA256 Hmac?")
     calCryptoSwSha2HmacEnabledSymbol.setDescription("Enable support for Software SHA256 Hmac")
-    calCryptoSwSha2HmacEnabledSymbol.setVisible(True)
-    calCryptoSwSha2HmacEnabledSymbol.setDefaultValue(True)
+    calCryptoSwSha2HmacEnabledSymbol.setVisible(False)
+    calCryptoSwSha2HmacEnabledSymbol.setDefaultValue(False)
     calCryptoSwSha2HmacEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sw_sha"])
 
     # Crypto SW SHA Hmac Counter
     calCryptoSwSha2HmacCtrEnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sha2_hmac_ctr", calSwShaEnabledSymbol)
     calCryptoSwSha2HmacCtrEnabledSymbol.setLabel("Support Crypto Sw SHA256 Hmac Counter?")
     calCryptoSwSha2HmacCtrEnabledSymbol.setDescription("Enable support for Software SHA256 Hmac Counter")
-    calCryptoSwSha2HmacCtrEnabledSymbol.setVisible(True)
-    calCryptoSwSha2HmacCtrEnabledSymbol.setDefaultValue(True)
+    calCryptoSwSha2HmacCtrEnabledSymbol.setVisible(False)
+    calCryptoSwSha2HmacCtrEnabledSymbol.setDefaultValue(False)
     calCryptoSwSha2HmacCtrEnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sw_sha"])
 
     # Crypto SW PBKDF2 SHA256
     calCryptoSwPbkdf2EnabledSymbol = calComponent.createBooleanSymbol("cal_sw_pbkdf2_sha2", calSwShaEnabledSymbol)
     calCryptoSwPbkdf2EnabledSymbol.setLabel("Support Crypto Sw PBKDF2 SHA256?")
     calCryptoSwPbkdf2EnabledSymbol.setDescription("Support Crypto Sw PBKDF2 SHA256")
-    calCryptoSwPbkdf2EnabledSymbol.setVisible(True)
-    calCryptoSwPbkdf2EnabledSymbol.setDefaultValue(True)
+    calCryptoSwPbkdf2EnabledSymbol.setVisible(False)
+    calCryptoSwPbkdf2EnabledSymbol.setDefaultValue(False)
     calCryptoSwPbkdf2EnabledSymbol.setDependencies(handleParentSymbolChange, ["cal_sw_sha"])
 
     # Crypto SW Random
     calHostSwRandEnabledSymbol = calComponent.createBooleanSymbol("cal_sw_rand", calCryptoConfig)
     calHostSwRandEnabledSymbol.setLabel("Enable SW crypto implementation to get random num")
     calHostSwRandEnabledSymbol.setDescription("Enable support for Software Random")
-    calHostSwRandEnabledSymbol.setVisible(True)
-    calHostSwRandEnabledSymbol.setDefaultValue(True)
+    calHostSwRandEnabledSymbol.setVisible(False)
+    calHostSwRandEnabledSymbol.setDefaultValue(False)
 
     # Crypto SW Sign
     calHostSwSignEnabledSymbol = calComponent.createBooleanSymbol("cal_sw_sign", calCryptoConfig)
     calHostSwSignEnabledSymbol.setLabel("Enable SW crypto implementation to perform sign?")
     calHostSwSignEnabledSymbol.setDescription("Enable Software Implementation to perform sign")
-    calHostSwSignEnabledSymbol.setVisible(True)
-    calHostSwSignEnabledSymbol.setDefaultValue(True)
+    calHostSwSignEnabledSymbol.setVisible(False)
+    calHostSwSignEnabledSymbol.setDefaultValue(False)
 
     # Crypto SW Verify
     calHostSwVerifyEnabledSymbol = calComponent.createBooleanSymbol("cal_sw_verify", calCryptoConfig)
     calHostSwVerifyEnabledSymbol.setLabel("Enable SW crypto implementation to perform verify?")
     calHostSwVerifyEnabledSymbol.setDescription("Enable Software Implementation to perform verify")
-    calHostSwVerifyEnabledSymbol.setVisible(True)
-    calHostSwVerifyEnabledSymbol.setDefaultValue(True)
+    calHostSwVerifyEnabledSymbol.setVisible(False)
+    calHostSwVerifyEnabledSymbol.setDefaultValue(False)
 
     # FreeRTOS Support - The hal file gets included as a symbol here and turned on/off via connections
     calEnableRtos = calComponent.createBooleanSymbol("CAL_ENABLE_RTOS", None)
@@ -999,11 +1185,11 @@ def instantiateComponent(calComponent):
     # Add device specific options
     calTaEnableAesAuth = calComponent.createBooleanSymbol('CAL_ENABLE_TA10x_AES_AUTH', None)
     calTaEnableAesAuth.setValue(False)
-    calTaEnableAesAuth.setVisible(True)
+    calTaEnableAesAuth.setVisible(False)
 
     calTaEnableFce = calComponent.createBooleanSymbol('CAL_ENABLE_TA10x_FCE', None)
     calTaEnableFce.setValue(False)
-    calTaEnableFce.setVisible(True)
+    calTaEnableFce.setVisible(False)
 
     ################# Templated files to be included #######################
 

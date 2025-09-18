@@ -5,7 +5,7 @@
  */
 
 #include <zephyr/drivers/i2c.h>
-
+#include "atca_platform.h"
 #include "hal/atca_hal.h"
 
 /** \defgroup hal_ Hardware abstraction layer (hal_)
@@ -18,7 +18,6 @@
 /** \brief The function return pre defined macro value for corrsponding i2c speed
  *
  *  \param[in] speed   As input, i2c clock speed in HZ
- *
  *  \return Zephyr I2C speed constant
  */
 static uint32_t hal_zephyr_i2c_convert_speed(const uint32_t speed)
@@ -40,13 +39,16 @@ hal_zephyr_i2c_configure(const struct device *zdev, /**< Zephyr device to config
 			 const uint32_t speed       /**< baud rate (typically 100000 or 400000) */
 )
 {
-	uint32_t i2c_cfg = I2C_MODE_CONTROLLER | I2C_SPEED_SET(hal_zephyr_i2c_convert_speed(speed));
+    uint32_t i2c_cfg = I2C_MODE_CONTROLLER  | I2C_SPEED_SET(hal_zephyr_i2c_convert_speed(speed));
 
-	if (i2c_configure(zdev, i2c_cfg)) {
-		return ATCA_GEN_FAIL;
-	} else {
-		return ATCA_SUCCESS;
-	}
+    if (i2c_configure(zdev, i2c_cfg)) 
+    {
+        return ATCA_GEN_FAIL;
+    }
+    else
+    {
+        return ATCA_SUCCESS;
+    }
 }
 
 /** \brief HAL implementation of I2C init
@@ -58,7 +60,6 @@ hal_zephyr_i2c_configure(const struct device *zdev, /**< Zephyr device to config
  *  \param[in] cfg pointer to HAL specific configuration data that is used to initialize this HAL
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
-
 ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
 {
 	ATCA_STATUS status = ATCA_BAD_PARAM;
@@ -93,7 +94,8 @@ ATCA_STATUS hal_i2c_post_init(ATCAIface iface)
  * \param[in] iface         instance
  * \param[in] word_address  device transaction type
  * \param[in] txdata        pointer to space to bytes to send
- * \param[in] txlength      number of bytes to send
+ * \param[in] txlength      number of bytes to send 
+ *                          (txdata length excludes word address)
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS hal_i2c_send(ATCAIface iface, uint8_t word_address, uint8_t *txdata, int txlength)

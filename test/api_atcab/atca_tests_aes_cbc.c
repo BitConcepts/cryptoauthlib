@@ -548,7 +548,7 @@ TEST(atca_cmd_basic_test, aes_cbc_mmt_cavp_vectors)
             {
 #ifdef ATCA_PRINTF
                 //Process read vector
-                printf("%04d\r", test_count++);
+                (void)printf("%04d\r", test_count++);
 #endif
 
                 // Load AES keys into slot
@@ -587,7 +587,7 @@ TEST(atca_cmd_basic_test, aes_cbc_mmt_cavp_vectors)
             {
 #ifdef ATCA_PRINTF
                 //Process read vector
-                printf("%04d\r", test_count++);
+                (void)printf("%04d\r", test_count++);
 #endif
 
                 // Load AES keys into slot
@@ -620,7 +620,7 @@ TEST(atca_cmd_basic_test, aes_cbc_mmt_cavp_vectors)
     fclose(rsp_file);
 
 #ifdef ATCA_PRINTF
-    printf("\n");
+    (void)printf("\n");
 #endif
 }
 #undef SIZE_OF_TEXT

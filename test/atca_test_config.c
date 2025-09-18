@@ -98,12 +98,12 @@ static void print_args(const char * f, int argc, char* argv[])
 {
     int i;
 
-    printf("Called from %s with %d args: ", f, argc);
+    (void)printf("Called from %s with %d args: ", f, argc);
     for (i = 0; i < argc; i++, argv++)
     {
-        printf("%s ", *argv);
+        (void)printf("%s ", *argv);
     }
-    printf("\n");
+    (void)printf("\n");
 }
 
 /** \brief Retrieves the currently configured device
@@ -287,7 +287,7 @@ static int select_device_internal(int argc, char* argv[], bool interactive)
 
     if (!ret && interactive)
     {
-        printf("Device Selected.\n");
+        (void)printf("Device Selected.\n");
     }
 
     return ret;

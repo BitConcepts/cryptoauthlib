@@ -2,6 +2,7 @@
 #if !defined(DO_NOT_TEST_CERT) && ATCACERT_COMPCERT_EN
 
 #include "atcacert/atcacert_def.h"
+#include "test_cert_def_1_signer.h"
 
 const uint8_t g_test_cert_template_0_device[] = {
     0x30, 0x82, 0x01, 0x8A, 0x30, 0x82, 0x01, 0x30, 0xA0, 0x03, 0x02, 0x01, 0x02, 0x02, 0x0A, 0x40,
@@ -103,5 +104,6 @@ const atcacert_def_t g_test_cert_def_0_device = {
     .cert_elements_count        = 0,
     .cert_template              = g_test_cert_template_0_device,
     .cert_template_size         = sizeof(g_test_cert_template_0_device),
+    .ca_cert_def                = &g_test_cert_def_1_signer
 };
 #endif

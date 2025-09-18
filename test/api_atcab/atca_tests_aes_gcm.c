@@ -458,7 +458,7 @@ TEST(atca_cmd_basic_test, aes_gcm_encrypt_cavp_vectors)
 
     time_t current_time;
     current_time = time(NULL);
-    fprintf(rsp_file, "# Executed Vectors on %s", ctime(&current_time));
+    (void)fprintf(rsp_file, "# Executed Vectors on %s", ctime(&current_time));
 
     do
     {
@@ -502,7 +502,7 @@ TEST(atca_cmd_basic_test, aes_gcm_encrypt_cavp_vectors)
 
 #ifdef ATCA_PRINTF
             //Process read vector
-            printf("%04d\r", test_count++);
+            (void)printf("%04d\r", test_count++);
 #endif
             // Load AES keys into TempKey
             status = atcab_nonce_load(NONCE_MODE_TARGET_TEMPKEY, key, 32);
@@ -527,14 +527,14 @@ TEST(atca_cmd_basic_test, aes_gcm_encrypt_cavp_vectors)
             fputs("CT = ", rsp_file);
             for (i = 0; i < text_size; i++)
             {
-                fprintf(rsp_file, "%02x", ct[i]);
+                (void)fprintf(rsp_file, "%02x", ct[i]);
             }
             fputs("\n", rsp_file);
 
             fputs("Tag = ", rsp_file);
             for (i = 0; i < AES_DATA_SIZE; i++)
             {
-                fprintf(rsp_file, "%02x", cal_tag[i]);
+                (void)fprintf(rsp_file, "%02x", cal_tag[i]);
             }
             fputs("\n", rsp_file);
         }
@@ -546,7 +546,7 @@ TEST(atca_cmd_basic_test, aes_gcm_encrypt_cavp_vectors)
     fclose(req_file);
     fclose(rsp_file);
 #ifdef ATCA_PRINTF
-    printf("\n");
+    (void)printf("\n");
 #endif
 }
 
@@ -629,7 +629,7 @@ TEST(atca_cmd_basic_test, aes_gcm_decrypt_cavp_vectors)
 
 #ifdef ATCA_PRINTF
             //Process read vector
-            printf("%04d\r", test_count++);
+            (void)printf("%04d\r", test_count++);
 #endif
             // Load AES keys into TempKey
             status = atcab_nonce_load(NONCE_MODE_TARGET_TEMPKEY, key, 32);
@@ -671,7 +671,7 @@ TEST(atca_cmd_basic_test, aes_gcm_decrypt_cavp_vectors)
     fclose(req_file);
     fclose(rsp_file);
 #ifdef ATCA_PRINTF
-    printf("\n");
+    (void)printf("\n");
 #endif
 }
 #endif

@@ -28,5 +28,5 @@ endif()
 
 if (UNIX)
         configure_file(cmake/libcryptoauth.pc.in libcryptoauth.pc @ONLY)
-        install(FILES ${CMAKE_BINARY_DIR}/libcryptoauth.pc DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig")
+        install(FILES ${CMAKE_BINARY_DIR}/libcryptoauth.pc DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 endif (UNIX)

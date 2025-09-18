@@ -174,7 +174,7 @@ int run_test(int argc, char* argv[], void (*fptest)(void))
         /* The assumption is that tests were supposed to have been run so if
            non were executed the assumption is there is a configuration problem.
            If a test suite has no tests for a given configuration don't run it */
-        printf("No tests were run for this configuration\n");
+        (void)printf("No tests were run for this configuration\n");
         ret = -1;
     }
     return ret;
@@ -325,20 +325,20 @@ void atca_test_assert_random_buffer(UNITY_LINE_TYPE from_line, uint8_t * buf, si
 
 #ifdef ATCA_PRINTF
     size_t printed = 0;
-    printf("\n");
+    (void)printf("\n");
     for (i = 0; i < sizeof(hg); i++)
     {
         if (0 < hg[i])
         {
-            printf("%3d: %d, ", i, hg[i]);
+            (void)printf("%3d: %d, ", i, hg[i]);
             printed++;
             if (0 == printed % 8)
             {
-                printf("\n");
+                (void)printf("\n");
             }
         }
     }
-    printf("\n");
+    (void)printf("\n");
 #endif
 
     for (i = 0; i < sizeof(hg); i++)

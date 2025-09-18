@@ -1,8 +1,8 @@
 /**
  * \file
- * \brief Test CryptoAuthLib Integrations into other Libraries
+ * \brief Test for the Cryptoauthlib Compressed Certficiate API
  *
- * \copyright (c) 2015-2020 Microchip Technology Inc. and its subsidiaries.
+ * \copyright (c) 2020-2025 Microchip Technology Inc. and its subsidiaries.
  *
  * \page License
  *
@@ -25,24 +25,31 @@
  * THIS SOFTWARE.
  */
 
-#ifndef TEST_INTEGRATION_H
-#define TEST_INTEGRATION_H
+#ifndef TEST_ATCACERT_HELPERS_H
+#define TEST_ATCACERT_HELPERS_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "atca_test.h"
+#include "atcacert/atcacert_client.h"
 
-#if defined(ATCA_MBEDTLS)
-extern t_test_case_info mbedtls_ecdsa_ecdh_test_info[];
+#if ATCACERT_COMPCERT_EN && ATCAC_SHA384_EN && ATCAC_SHA512_EN && ATCA_TA_SUPPORT
+void build_and_save_cert_ta(
+    const atcacert_def_t* cert_def,
+    uint8_t* cert,
+    size_t* cert_size,
+    const cal_buffer* ca_public_key,
+    const cal_buffer* public_key,
+    const uint8_t            signer_id[2],
+    const atcacert_tm_utc_t* issue_date,
+    const uint8_t* sn,
+    uint16_t                 ca_slot);
 #endif
-
-/* Console function */
-int run_integration_tests(int argc, char* argv[]);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TEST_INTEGRATION_H */
+#endif /* TEST_ATCACERT_HELPERS_H */

@@ -20,8 +20,8 @@
  *
    @{ */
 
-#if !defined(ATCA_PLATFORM_MALLOC)
-void *hal_malloc(size_t size)
+#if !defined(ATCA_PLATFORM_MALLOC) 
+void*   hal_malloc(size_t size)
 {
 	return k_malloc(size);
 }
@@ -40,7 +40,7 @@ void hal_free(void *ptr)
  */
 void hal_delay_us(uint32_t delay)
 {
-	k_busy_wait(delay);
+   k_usleep(delay);
 }
 
 /** \brief This function delays for a number of tens of microseconds.
@@ -65,7 +65,7 @@ void hal_delay_ms(uint32_t delay)
 	hal_delay_us(delay * 1000);
 }
 
-ATCA_STATUS hal_create_mutex(void **ppMutex, const char *pName)
+ATCA_STATUS hal_create_mutex(void ** ppMutex, const char* pName)
 {
 	(void)pName;
 

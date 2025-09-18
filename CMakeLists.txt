@@ -6,10 +6,10 @@ option(ATCA_ZEPHYR_SUPPORT "Enable Zephyr HAL support and build as a Zephyr libr
 project (cryptoauthlib C)
 
 # Set the current release version
-set(VERSION "3.7.8")
+set(VERSION "3.7.9")
 set(VERSION_MAJOR 3)
 set(VERSION_MINOR 7)
-set(VERSION_PATCH 8)
+set(VERSION_PATCH 9)
 
 # Build Options
 option(BUILD_TESTS "Create Test Application with library" OFF)
@@ -20,8 +20,8 @@ else()
     set(SETUP_INSTALLER OFF CACHE INTERNAL "Disabling installation on this platform")
 endif()
 
-# Default install root which is normally /usr/local/
-set(CMAKE_INSTALL_PREFIX "/" CACHE INTERNAL "")
+# Use -DCMAKE_INSTALL_PREFIX to override default make install to /usr/local
+# set(CMAKE_INSTALL_PREFIX "/" CACHE INTERNAL "")
 
 # If including certificate definitions into the library then include them as ATCACERT_DEF_SRC
 #file(GLOB ATCACERT_DEF_SRC ABSOLUTE "app/*.c")

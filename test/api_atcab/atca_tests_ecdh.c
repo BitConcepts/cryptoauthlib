@@ -79,7 +79,7 @@ TEST(atca_cmd_basic_test, ecdh)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pub_alice, ATCA_PUB_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("alice slot %d pubkey:\r\n%s\r\n", key_id_alice, displaystr);
+    (void)printf("alice slot %d pubkey:\r\n%s\r\n", key_id_alice, displaystr);
 #endif
 
     TEST_ASSERT_NOT_EQUAL_MESSAGE(0, memcmp(pub_alice, frag, sizeof(frag)), "Alice key not initialized");
@@ -92,7 +92,7 @@ TEST(atca_cmd_basic_test, ecdh)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pub_bob, ATCA_PUB_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("bob slot %d pubkey:\r\n%s\r\n", key_id_bob, displaystr);
+    (void)printf("bob slot %d pubkey:\r\n%s\r\n", key_id_bob, displaystr);
 #endif
 
     memcpy(read_key, g_slot4_key, 32);
@@ -113,7 +113,7 @@ TEST(atca_cmd_basic_test, ecdh)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pms_alice, ECDH_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("alice's pms:\r\n%s\r\n", displaystr);
+    (void)printf("alice's pms:\r\n%s\r\n", displaystr);
 #endif
 
     status = atcab_ecdh(key_id_bob, pub_alice, pms_bob);
@@ -124,7 +124,7 @@ TEST(atca_cmd_basic_test, ecdh)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pms_bob, ECDH_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("bob's pms:\r\n%s\r\n", displaystr);
+    (void)printf("bob's pms:\r\n%s\r\n", displaystr);
 #endif
 
     TEST_ASSERT_EQUAL_MEMORY(pms_alice, pms_bob, sizeof(pms_alice));
@@ -166,7 +166,7 @@ TEST(atca_cmd_basic_test, ecdh_simple)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pub_alice, ATCA_ECCP256_PUBKEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("\r\nalice slot %04x pubkey:\r\n%s\r\n", key_id_alice, displaystr);
+    (void)printf("\r\nalice slot %04x pubkey:\r\n%s\r\n", key_id_alice, displaystr);
 #endif
 
     TEST_ASSERT_NOT_EQUAL_MESSAGE(0, memcmp(pub_alice, frag, sizeof(frag)), "Alice key not initialized");
@@ -179,7 +179,7 @@ TEST(atca_cmd_basic_test, ecdh_simple)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pub_bob, ATCA_ECCP256_PUBKEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("bob slot %04x pubkey:\r\n%s\r\n", key_id_bob, displaystr);
+    (void)printf("bob slot %04x pubkey:\r\n%s\r\n", key_id_bob, displaystr);
 #endif
 
     status = atcab_ecdh(key_id_alice, pub_bob, pms_alice);
@@ -190,7 +190,7 @@ TEST(atca_cmd_basic_test, ecdh_simple)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pms_alice, ATCA_ECCP256_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("alice's pms:\r\n%s\r\n", displaystr);
+    (void)printf("alice's pms:\r\n%s\r\n", displaystr);
 #endif
 
     status = atcab_ecdh(key_id_bob, pub_alice, pms_bob);
@@ -201,7 +201,7 @@ TEST(atca_cmd_basic_test, ecdh_simple)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pms_bob, ATCA_ECCP256_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("bob's pms:\r\n%s\r\n", displaystr);
+    (void)printf("bob's pms:\r\n%s\r\n", displaystr);
 #endif
 
     TEST_ASSERT_EQUAL_MEMORY(pms_alice, pms_bob, sizeof(pms_alice));
@@ -240,7 +240,7 @@ TEST(atca_cmd_basic_test, ecdh_protection_key)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pub_alice, ATCA_PUB_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("alice  pubkey:\r\n%s\r\n", displaystr);
+    (void)printf("alice  pubkey:\r\n%s\r\n", displaystr);
 #endif
 
     //Generating Bob public key from private key in slot
@@ -252,7 +252,7 @@ TEST(atca_cmd_basic_test, ecdh_protection_key)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pub_bob, ATCA_PUB_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("bob slot %d pubkey:\r\n%s\r\n", key_id_bob, displaystr);
+    (void)printf("bob slot %d pubkey:\r\n%s\r\n", key_id_bob, displaystr);
 #endif
 
     //Generating Alice PMS with bob public key.
@@ -263,7 +263,7 @@ TEST(atca_cmd_basic_test, ecdh_protection_key)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pms_alice, ECDH_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("alice's pms:\r\n%s\r\n", displaystr);
+    (void)printf("alice's pms:\r\n%s\r\n", displaystr);
 #endif
 
     //Generating Bob encrypted PMS with Alice public key.
@@ -276,7 +276,7 @@ TEST(atca_cmd_basic_test, ecdh_protection_key)
     displen = sizeof(displaystr);
     status = atcab_bin2hex(pms_bob, ECDH_KEY_SIZE, displaystr, &displen);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
-    printf("bob's decrypted pms:\r\n%s\r\n", displaystr);
+    (void)printf("bob's decrypted pms:\r\n%s\r\n", displaystr);
 #endif
 
     TEST_ASSERT_EQUAL_MEMORY(pms_alice, pms_bob, sizeof(pms_alice));

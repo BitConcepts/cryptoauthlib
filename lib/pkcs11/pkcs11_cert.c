@@ -121,6 +121,7 @@ static CK_RV pkcs11_cert_load_cache(const pkcs11_session_ctx_ptr pSession, const
 
                 if (NULL != cert_def)
                 {
+                    (void)pkcs11_util_memset(cert_def, sizeof(atcacert_def_t), 0, sizeof(atcacert_def_t));
                     cert_def->type = CERTTYPE_X509_FULL_STORED;
                     cert_def->comp_cert_dev_loc.zone = (atcacert_device_zone_t)ATCA_ZONE_DATA;
                     cert_def->comp_cert_dev_loc.slot = pObject->slot;

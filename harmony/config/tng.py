@@ -87,7 +87,7 @@ def AddFilesDir(component, configName, dirPath):
         for filename in files:
             filepath = str(root + os.sep + filename)
             source_path = filepath[len(modulePath):]
-            destination_path = "library" + os.sep + "cryptoauthlib" + os.sep + os.path.basename(dirPath) + root[len(dirPath):]
+            destination_path = "library" + os.sep + "cryptoauthlib" + os.sep + "app" + os.sep + os.path.basename(dirPath) + root[len(dirPath):]
             project_path = str("config" + os.sep + configName + os.sep + destination_path)
             if (".c" in filename):
                 AddFile(component, source_path , destination_path, project_path)
@@ -108,7 +108,7 @@ def instantiateComponent(tngComponent):
 
     configName = Variables.get("__CONFIGURATION_NAME")
     
-    targetPath = '../src/config/' + configName + '/library/cryptoauthlib/tng'
+    targetPath = '../src/config/' + configName + '/library/cryptoauthlib/app/tng'
     
     # Append the include paths in MPLABX IDE
     defSym = tngComponent.createSettingSymbol("CAL_XC32_INCLUDE_DIRS", None)

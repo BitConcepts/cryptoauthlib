@@ -226,7 +226,7 @@ static int run_cmd(t_menu_info* menu_item, int argc, char* argv[])
 {
     int ret = -1;
 
-    printf("\n");
+    (void)printf("\n");
     if (argc && argv)
     {
         if (0 <= (ret = process_options(argc - 1, &argv[1])))
@@ -247,13 +247,13 @@ static int run_cmd(t_menu_info* menu_item, int argc, char* argv[])
 
     if (!menu_item->menu_cmd)
     {
-        printf("syntax error in command: %s", argv[0]);
+        (void)printf("syntax error in command: %s", argv[0]);
     }
 
     /* Reset quiet mode for the next command */
     g_atca_test_quiet_mode = false;
 
-    printf("\n");
+    (void)printf("\n");
     return ret;
 }
 
@@ -305,8 +305,8 @@ int main(int argc, char* argv[])
 
         while (!exit_code)
         {
-            printf("$ ");
-            fflush(stdout);
+            (void)printf("$ ");
+            (void)fflush(stdout);
             if (fgets(buffer, sizeof(buffer), stdin))
             {
                 parse_cmd(buffer, sizeof(buffer));
@@ -329,7 +329,7 @@ int processCmd(void)
     cmd[i] = '\0';
     //printf("\r\n%s\r\n", command );
     parse_cmd(cmd, sizeof(cmd));
-    printf("$ ");
+    (void)printf("$ ");
 
     return ATCA_SUCCESS;
 }
@@ -345,7 +345,7 @@ void atca_test_task(void)
 
         if (ch)
         {
-            printf("%c", ch); // echo to output
+            (void)printf("%c", ch); // echo to output
             if (ch == 0x0d || ch == 0x0a)
             {
                 processCmd();
@@ -367,10 +367,10 @@ static int help(int argc, char* argv[])
 
     uint8_t index = 0;
 
-    printf("Usage:\r\n");
+    (void)printf("Usage:\r\n");
     while (mas_menu_info[index].menu_cmd != NULL)
     {
-        printf("%s - %s\r\n", mas_menu_info[index].menu_cmd, mas_menu_info[index].menu_cmd_description);
+        (void)printf("%s - %s\r\n", mas_menu_info[index].menu_cmd, mas_menu_info[index].menu_cmd_description);
         index++;
     }
 

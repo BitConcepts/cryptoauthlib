@@ -290,7 +290,7 @@ TEST(atcac_pk, sign_simple)
                            0x94, 0xA5, 0x1B, 0xD5, 0xDB, 0x91, 0x36, 0x37,
                            0x67, 0x55, 0x0C, 0x0F, 0x0A, 0xF3, 0x27, 0xD4 };
     uint8_t signature[128];
-    size_t sig_size = sizeof(signature);
+    size_t sig_len = ATCA_ECCP256_SIG_SIZE;
     ATCA_STATUS status;
 
 #if defined(ATCA_BUILD_SHARED_LIBS) || defined(ATCA_HEAP)
@@ -305,14 +305,14 @@ TEST(atcac_pk, sign_simple)
     verify_ctx = &verify_ctx_inst;
 #endif
 
-    memset(signature, 0, sig_size);
+    memset(signature, 0, sizeof(signature));
 
     /* Test initialization of a private key with a pem encoded key (without password) */
     status = atcac_pk_init_pem(sign_ctx, private_key_pem, sizeof(private_key_pem), false);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
     /* Test signing with the private key */
-    status = atcac_pk_sign(sign_ctx, digest, sizeof(digest), signature, &sig_size);
+    status = atcac_pk_sign(sign_ctx, digest, sizeof(digest), signature, sizeof(signature), &sig_len);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
     /* Test initialization of a public key with a pem encoded key */
@@ -320,13 +320,13 @@ TEST(atcac_pk, sign_simple)
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
     /* Test verification of the siguature */
-    status = atcac_pk_verify(verify_ctx, digest, sizeof(digest), &signature[sig_size - 64], 64);
+    status = atcac_pk_verify(verify_ctx, digest, sizeof(digest), &signature[sig_len - 64], 64);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
     signature[10] ^= signature[10];
 
     /* Test failure to validate a corrupted signature */
-    status = atcac_pk_verify(verify_ctx, digest, sizeof(digest), &signature[sig_size - 64], 64);
+    status = atcac_pk_verify(verify_ctx, digest, sizeof(digest), &signature[sig_len - 64], 64);
     TEST_ASSERT_NOT_EQUAL(ATCA_SUCCESS, status);
 
 #if defined(ATCA_BUILD_SHARED_LIBS) || defined(ATCA_HEAP)
@@ -351,7 +351,7 @@ TEST(atcac_pk, sign_p384_simple)
                            0x94, 0xA5, 0x1B, 0xD5, 0xDB, 0x91, 0x36, 0x37, 0x67, 0x55, 0x0C, 0x0F, 0x0A, 0xF3, 0x27, 0xD4,
                            0x01, 0x15, 0x67, 0x78, 0x90, 0x88, 0x54, 0x77, 0x12, 0x55, 0x66, 0x89, 0x78, 0x88, 0x90, 0x99 };
     uint8_t signature[96];
-    size_t sig_size = sizeof(signature);
+    size_t sig_len = ATCA_ECCP384_SIG_SIZE;
     ATCA_STATUS status;
 
     static uint8_t private_key_p384_pem[] =
@@ -381,14 +381,14 @@ TEST(atcac_pk, sign_p384_simple)
     verify_ctx = &verify_ctx_inst;
 #endif
 
-    memset(signature, 0, sig_size);
+    memset(signature, 0, sizeof(signature));
 
     /* Test initialization of a private key with a pem encoded key (without password) */
     status = atcac_pk_init_pem(sign_ctx, private_key_p384_pem, sizeof(private_key_p384_pem), false);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
     /* Test signing with the private key */
-    status = atcac_pk_sign(sign_ctx, digest, sizeof(digest), signature, &sig_size);
+    status = atcac_pk_sign(sign_ctx, digest, sizeof(digest), signature, sizeof(signature), &sig_len);
     TEST_ASSERT_EQUAL(ATCA_SUCCESS, status);
 
     /* Test initialization of a public key with a pem encoded key */

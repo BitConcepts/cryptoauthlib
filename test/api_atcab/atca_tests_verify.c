@@ -57,11 +57,11 @@ void print_buffer(uint8_t *buf, int len)
     {
         if (i && !(i % 16))
         {
-            printf("\n");
+            (void)printf("\n");
         }
-        printf("%02x", *buf);
+        (void)printf("%02x", *buf);
     }
-    printf("\n");
+    (void)printf("\n");
 }
 
 #if TEST_ATCAB_VERIFY_EXTERN_EN
@@ -282,7 +282,7 @@ TEST(atca_cmd_basic_test, verify_stored_on_reqrandom_set)
         "AwEHoUQDQgAExAE2yqujppBzD0hIpdqdXmMgtlXT90QqllaQYWEVBjdf+LmY5DCf\n"
         "Mx8PXEVxhbDmgo6HHbz0S4VaZjShBLMaPw==\n"
         "-----END EC PRIVATE KEY-----\n";
-    size_t sig_size = sizeof(signature);
+    size_t sig_len = ATCA_ECCP256_SIG_SIZE;
     size_t pubkey_len = sizeof(public_key);
 
     /* Initialization of a private key with a pem encoded key (without password) */
@@ -329,7 +329,7 @@ TEST(atca_cmd_basic_test, verify_stored_on_reqrandom_set)
 
     // Sign the message
 #if defined(ATCA_MBEDTLS) || defined(ATCA_OPENSSL) || defined(ATCA_WOLFSSL)
-    status = atcac_pk_sign(sign_ctx, nonce_params.temp_key->value, ATCA_SHA256_DIGEST_SIZE, signature, &sig_size);
+    status = atcac_pk_sign(sign_ctx, nonce_params.temp_key->value, ATCA_SHA256_DIGEST_SIZE, signature, sizeof(signature), &sig_len);
 #else
     // Only the 608 has the message digest buffer - other devices will invalidate tempkey
     status = atcab_sign(private_key_id, nonce_params.temp_key->value, signature);
