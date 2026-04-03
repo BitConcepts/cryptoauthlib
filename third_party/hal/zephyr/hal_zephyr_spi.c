@@ -6,6 +6,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/spi.h>
+#include <zephyr/drivers/gpio.h>
 
 #include "hal/atca_hal.h"
 #include "hal_zephyr_spi.h"
@@ -39,11 +40,11 @@ ATCA_STATUS hal_spi_init(ATCAIface iface, ATCAIfaceCfg *cfg)
 
 	if (iface && cfg && cfg->cfg_data) {
 		if (!iface->hal_data) {
-			atca_spi_host_t *hal_data = malloc(sizeof(atca_spi_host_t));
+			atca_spi_host_t *hal_data = hal_malloc(sizeof(atca_spi_host_t));
 			atca_spi_host_config_t *cfg_data = (atca_spi_host_config_t *)cfg->cfg_data;
 
 			if (hal_data) {
-				memset(hal_data, 0, sizeof(hal_data));
+				memset(hal_data, 0, sizeof(*hal_data));
 
 				hal_data->cfg.operation = SPI_OP_MODE_MASTER | SPI_MODE_CPOL |
 							  SPI_MODE_CPHA | SPI_TRANSFER_MSB |
@@ -52,9 +53,9 @@ ATCA_STATUS hal_spi_init(ATCAIface iface, ATCAIfaceCfg *cfg)
 
 				hal_data->dev = device_get_binding(cfg_data->device_name);
 
-				hal_data->cs.gpio_dev = device_get_binding(cfg_data->gpio_name);
-				hal_data->cs.gpio_pin = cfg->atcaspi.select_pin;
-				hal_data->cs.gpio_dt_flags = GPIO_ACTIVE_LOW;
+				hal_data->cs.gpio.port = device_get_binding(cfg_data->gpio_name);
+				hal_data->cs.gpio.pin = cfg->atcaspi.select_pin;
+				hal_data->cs.gpio.dt_flags = GPIO_ACTIVE_LOW;
 
 				hal_data->cfg.cs = &hal_data->cs;
 
@@ -65,7 +66,7 @@ ATCA_STATUS hal_spi_init(ATCAIface iface, ATCAIfaceCfg *cfg)
 			}
 		}
 	}
-	printf("hal_spi_init: %d\n", status);
+	printk("hal_spi_init: %d\n", status);
 	return status;
 }
 
@@ -180,7 +181,7 @@ ATCA_STATUS hal_spi_control(ATCAIface iface, uint8_t option, void *param, size_t
 		case ATCA_HAL_CONTROL_DESELECT:
 			return hal_spi_deselect(iface);
 		default:
-			printf("hal_spi_control: %d, %lu\n", option, paramlen);
+			printk("hal_spi_control: %d, %lu\n", option, paramlen);
 			return ATCA_UNIMPLEMENTED;
 		}
 	}
@@ -193,6 +194,9 @@ ATCA_STATUS hal_spi_control(ATCAIface iface, uint8_t option, void *param, size_t
  */
 ATCA_STATUS hal_spi_release(void *hal_data)
 {
+	if (hal_data) {
+		hal_free(hal_data);
+	}
 	return ATCA_SUCCESS;
 }
 

@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-if (ATCA_ZEPHYR_SUPPORT)
-    project(cryptoauthlib NONE)
-    find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-else()
+if (NOT ATCA_ZEPHYR_SUPPORT)
     project(cryptoauth C)
 endif()
 
@@ -120,7 +117,7 @@ file(GLOB SHA206_API_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "../app/api_206a/*
 file(GLOB SHA206_API_INC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "../app/api_206a/*.h")
 
 if(ATCA_PKCS11 AND (ATCA_TNGTLS_SUPPORT OR ATCA_TNGLORA_SUPPORT OR ATCA_TFLEX_SUPPORT))
-    SET(TNG_SRC ${TNG_SRC} ../app/pkcs11/trust_pkcs11_config.c)
+    set(TNG_SRC ${TNG_SRC} ../app/pkcs11/trust_pkcs11_config.c)
 endif()
 
 if(${CMAKE_VERSION} VERSION_GREATER "3.8.0")
@@ -202,8 +199,8 @@ endif()
 
 if(ATCA_ZEPHYR_SUPPORT)
     set(CRYPTOAUTH_SRC ${CRYPTOAUTH_SRC} ../third_party/hal/zephyr/hal_zephyr.c)
-    SET(TWI_SRC ../third_party/hal/zephyr/hal_zephyr_i2c.c)
-    SET(SPI_SRC ../third_party/hal/zephyr/hal_zephyr_spi.c)
+    set(TWI_SRC ../third_party/hal/zephyr/hal_zephyr_i2c.c)
+    set(SPI_SRC ../third_party/hal/zephyr/hal_zephyr_spi.c)
 endif()
 
 if(LINUX AND NEED_USB)

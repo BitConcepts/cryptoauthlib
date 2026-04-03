@@ -101,17 +101,12 @@ ATCA_STATUS hal_i2c_post_init(ATCAIface iface)
 ATCA_STATUS hal_i2c_send(ATCAIface iface, uint8_t word_address, uint8_t *txdata, int txlength)
 {
 	struct device *zdev = (struct device *)atgetifacehaldat(iface);
-	ATCAIfaceCfg *cfg = iface->mIfaceCFG;
 
-	if (!zdev || !cfg) {
+	if (!zdev || !iface->mIfaceCFG) {
 		return ATCA_BAD_PARAM;
 	}
 
-#ifdef ATCA_ENABLE_DEPRECATED
-	uint8_t dev_addr = cfg->atcai2c.slave_address >> 1;
-#else
-	uint8_t dev_addr = cfg->atcai2c.address >> 1;
-#endif
+	uint8_t dev_addr = ATCA_IFACECFG_I2C_ADDRESS(iface->mIfaceCFG) >> 1;
 
 	struct i2c_msg msgs[2];
 

@@ -1,0 +1,28 @@
+common:
+  tags:
+    - crypto
+    - cryptoauthlib
+  depends_on: i2c
+
+tests:
+  libraries.crypto.cryptoauthlib.build_i2c:
+    platform_allow:
+      - native_sim
+      - qemu_cortex_m3
+    extra_configs:
+      - CONFIG_CRYPTOAUTHLIB=y
+      - CONFIG_ATCA_HAL_I2C=y
+      - CONFIG_ATCA_ATECC608_SUPPORT=y
+      - CONFIG_ATCA_NO_HEAP=y
+    tags:
+      - cryptoauthlib
+      - i2c
+
+  libraries.crypto.cryptoauthlib.build_defaults:
+    platform_allow:
+      - native_sim
+      - qemu_cortex_m3
+    extra_configs:
+      - CONFIG_CRYPTOAUTHLIB=y
+    tags:
+      - cryptoauthlib

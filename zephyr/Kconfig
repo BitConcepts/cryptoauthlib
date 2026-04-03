@@ -1,65 +1,61 @@
 
-menu "CryptoAuthLib Configuration"
-
-config CRYPTOAUTHLIB
-	bool "Enable CryptoAuthLib"
-	default n
+menuconfig CRYPTOAUTHLIB
+	bool "CryptoAuthLib - Microchip CryptoAuthentication Library"
 	help
-	  Master switch for the CryptoAuthLib module.
+	  Enable the Microchip CryptoAuthLib module for communicating
+	  with CryptoAuthentication secure elements (ATECC608, ECC204,
+	  SHA104/105, TA010, etc.) over I2C or SPI.
+
+if CRYPTOAUTHLIB
 
 menu "Hardware Abstraction Layer (HAL)"
 
 config ATCA_HAL_I2C
-	bool "Enable I2C HAL driver"
+	bool "I2C HAL driver"
 	default y
+	depends on I2C
 	help
-	  Use the I2C HAL (Linux & MCU) for device communication.
+	  Use the I2C HAL for device communication.
 
 config ATCA_HAL_SPI
-	bool "Enable SPI HAL driver"
-	default n
+	bool "SPI HAL driver"
+	depends on SPI
 	help
-	  Use the SPI HAL (Linux & MCU) for device communication.
+	  Use the SPI HAL for device communication.
 
 config ATCA_HAL_CUSTOM
-	bool "Enable custom/plug-in HAL driver"
-	default n
+	bool "Custom/plug-in HAL driver"
 	help
 	  Build support for a custom HAL implementation.
 
 config ATCA_HAL_KIT_HID
-	bool "Enable KIT HID HAL driver"
-	default n
+	bool "Kit protocol HID HAL driver"
 	help
 	  Include the HID-based kit protocol driver.
 
 config ATCA_HAL_KIT_BRIDGE
-	bool "Enable KIT Bridge protocol"
-	default n
+	bool "Kit bridge protocol"
 	help
-	  Include the general-purpose KIT bridge protocol.
+	  Include the general-purpose kit bridge protocol.
 
 config ATCA_HAL_KIT_UART
-	bool "Enable KIT UART HAL driver"
-	default n
+	bool "Kit protocol UART HAL driver"
 	help
 	  Include the UART-based kit protocol driver.
 
 config ATCA_HAL_SWI_UART
-	bool "Enable SWI-UART HAL driver"
-	default n
+	bool "SWI over UART HAL driver"
 	help
 	  Include the single-wire interface over UART driver.
 
 endmenu # HAL
 
-menu "Library Behavior Options"
+menu "Library Behavior"
 
 config ATCA_PRINTF
-	bool "Enable debug printf statements"
-	default n
+	bool "Debug printf statements"
 	help
-	  Turn on internal debug printfs in the library.
+	  Turn on internal debug output in the library.
 
 config ATCA_NO_HEAP
 	bool "Disable dynamic heap allocation"
@@ -68,26 +64,23 @@ config ATCA_NO_HEAP
 	  Do not use malloc/free; use only stack/static allocations.
 
 config ATCA_CHECK_PARAMS_EN
-	bool "Enable parameter checking"
+	bool "Parameter checking"
 	default y
 	help
 	  Check input parameters in public APIs for safety.
 
 config ATCA_ENABLE_DEPRECATED
-	bool "Enable deprecated APIs"
-	default n
+	bool "Deprecated APIs"
 	help
 	  Allow use of older API wrappers that have been replaced.
 
 config ATCA_STRICT_C99
-	bool "Enable strict C99 compliance"
-	default n
+	bool "Strict C99 compliance"
 	help
 	  Compile with strict C99 rules (-Wpedantic).
 
 config MULTIPART_BUF_EN
-	bool "Enable multipart buffer support"
-	default n
+	bool "Multipart buffer support"
 	help
 	  Support large multipart buffers in CryptoAuthLib.
 
@@ -96,121 +89,115 @@ endmenu # Library Behavior
 menu "Cryptographic Backends"
 
 config ATCA_MBEDTLS
-	bool "Enable mbedTLS integration"
-	default n
+	bool "mbedTLS integration"
+	help
+	  Use mbedTLS as the cryptographic backend.
 
 config ATCA_WOLFSSL
-	bool "Enable WolfSSL integration"
-	default n
+	bool "wolfSSL integration"
+	help
+	  Use wolfSSL as the cryptographic backend.
 
 config ATCA_OPENSSL
-	bool "Enable OpenSSL integration"
-	default n
+	bool "OpenSSL integration"
+	help
+	  Use OpenSSL as the cryptographic backend.
 
-endmenu # Crypto Backends
+endmenu # Cryptographic Backends
 
-menu "Certificate and JWT Options"
+menu "Certificates and JWT"
 
 config ATCA_JWT_EN
-	bool "Enable JWT functionality"
-	default n
+	bool "JWT functionality"
 	help
 	  Build in support for JSON Web Tokens.
 
 config ATCACERT_COMPCERT_EN
-	bool "Enable compressed certificate support"
+	bool "Compressed certificate support"
 	default y
 
 config ATCACERT_FULLSTOREDCERT_EN
-	bool "Enable full certificate support"
+	bool "Full stored certificate support"
 	default y
 
 menu "Trust Platform (TNG) Certificates"
 
 config ATCA_TNGTLS_SUPPORT
-	bool "Enable Trust & Go TLS certs"
-	default n
+	bool "Trust & Go TLS certificates"
 
 config ATCA_TNGLORA_SUPPORT
-	bool "Enable Trust & Go LoRa certs"
-	default n
+	bool "Trust & Go LoRa certificates"
 
 config ATCA_TFLEX_SUPPORT
-	bool "Enable TrustFlex certificates"
-	default n
+	bool "TrustFlex certificates"
 
 config ATCA_TNG_LEGACY_SUPPORT
-	bool "Enable legacy Trust & Go certs"
-	default n
+	bool "Legacy Trust & Go certificates"
 
 endmenu # TNG
 
 config ATCA_WPC_SUPPORT
-	bool "Enable WPC Certificates"
-	default n
+	bool "WPC certificates"
 
-endmenu # Certificate and JWT
+endmenu # Certificates and JWT
 
 menu "SHA Support"
 
 config ATCAC_SHA384_EN
-	bool "Enable SHA-384 support"
-	default n
+	bool "SHA-384"
 
 config ATCAC_SHA512_EN
-	bool "Enable SHA-512 support"
-	default n
+	bool "SHA-512"
 
 endmenu # SHA Support
 
-menu "PKCS11 Support"
+menu "PKCS#11"
 
 config ATCA_PKCS11
-	bool "Enable PKCS#11 library"
-	default n
+	bool "PKCS#11 interface"
 	help
-	  Build the PKCS#11 interface (Linux & Zephyr only).
+	  Build the PKCS#11 interface library.
 
-endmenu # PKCS11
+endmenu # PKCS#11
 
-menu "Supported Devices"
+menu "Device Support"
 
 config ATCA_ATSHA204A_SUPPORT
-	bool "Support ATSHA204A device"
+	bool "ATSHA204A"
 	default y
 
 config ATCA_ATSHA206A_SUPPORT
-	bool "Support ATSHA206A device"
+	bool "ATSHA206A"
 	default y
 
 config ATCA_ATECC108A_SUPPORT
-	bool "Support ATECC108A device"
+	bool "ATECC108A"
 	default y
 
 config ATCA_ATECC508A_SUPPORT
-	bool "Support ATECC508A device"
+	bool "ATECC508A"
 	default y
 
 config ATCA_ATECC608_SUPPORT
-	bool "Support ATECC608 device"
+	bool "ATECC608"
 	default y
 
 config ATCA_ECC204_SUPPORT
-	bool "Support ECC204 device"
+	bool "ECC204"
 	default y
 
 config ATCA_TA010_SUPPORT
-	bool "Support TA010 device"
+	bool "TA010"
 	default y
 
 config ATCA_SHA104_SUPPORT
-	bool "Support SHA104 device"
+	bool "SHA104"
 	default y
 
 config ATCA_SHA105_SUPPORT
-	bool "Support SHA105 device"
+	bool "SHA105"
 	default y
 
-endmenu # Devices
+endmenu # Device Support
 
-endmenu # CryptoAuthLib Configuration
+endif # CRYPTOAUTHLIB
