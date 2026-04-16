@@ -688,7 +688,7 @@ ATCA_STATUS calib_ca2_read_serial_number(ATCADevice device, uint8_t* serial_numb
 ATCA_STATUS calib_ca2_read_bytes_zone(ATCADevice device, uint8_t zone, uint16_t slot,
                                       size_t offset, uint8_t* data, size_t length)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     uint8_t data_set_size = (ATCA_ZONE_DATA == zone) ? ATCA_BLOCK_SIZE : ATCA_CA2_CONFIG_SLOT_SIZE;
     size_t cur_block = 0;
     size_t data_idx = 0;
