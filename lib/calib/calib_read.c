@@ -61,8 +61,8 @@
 ATCA_STATUS calib_read_zone(ATCADevice device, uint8_t zone, uint16_t slot, uint8_t block, uint8_t offset, uint8_t *data, uint8_t len)
 {
     ATCAPacket * packet = NULL;
-    ATCA_STATUS status;
-    uint16_t addr;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
+    uint16_t addr = 0;
 
     do
     {
@@ -126,7 +126,7 @@ ATCA_STATUS calib_read_zone(ATCADevice device, uint8_t zone, uint16_t slot, uint
  */
 ATCA_STATUS calib_read_serial_number(ATCADevice device, uint8_t* serial_number)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     uint8_t read_buf[ATCA_BLOCK_SIZE];
 
     if (NULL == serial_number)
@@ -177,7 +177,7 @@ ATCA_STATUS calib_read_enc(ATCADevice device, uint16_t key_id, uint8_t block, ui
                            const uint8_t num_in[NONCE_NUMIN_SIZE])
 {
 #endif
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     uint8_t zone = ATCA_ZONE_DATA | ATCA_ZONE_READWRITE_32;
     atca_nonce_in_out_t nonce_params;
     atca_gen_dig_in_out_t gen_dig_param;
@@ -293,7 +293,7 @@ ATCA_STATUS calib_read_enc(ATCADevice device, uint16_t key_id, uint8_t block, ui
  */
 ATCA_STATUS calib_read_bytes_zone(ATCADevice device, uint8_t zone, uint16_t slot, size_t offset, uint8_t *data, size_t length)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     size_t zone_size = 0;
     uint8_t read_buf[32];
     size_t data_idx = 0;
@@ -484,7 +484,7 @@ bool calib_ecc608_compare_config(
  */
 ATCA_STATUS calib_read_sig(ATCADevice device, uint16_t slot, uint8_t* sig)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
 
     do
     {
@@ -625,7 +625,7 @@ ATCA_STATUS calib_ca2_read_zone(ATCADevice device, uint8_t zone, uint16_t slot, 
  */
 ATCA_STATUS calib_ca2_read_config_zone(ATCADevice device, uint8_t* config_data)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     uint8_t slot = 0;
 
     while (slot <= 3u)
@@ -653,7 +653,7 @@ ATCA_STATUS calib_ca2_read_config_zone(ATCADevice device, uint8_t* config_data)
  */
 ATCA_STATUS calib_ca2_read_serial_number(ATCADevice device, uint8_t* serial_number)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     uint8_t read_buf[ATCA_CA2_CONFIG_SLOT_SIZE];
 
 
@@ -688,7 +688,7 @@ ATCA_STATUS calib_ca2_read_serial_number(ATCADevice device, uint8_t* serial_numb
 ATCA_STATUS calib_ca2_read_bytes_zone(ATCADevice device, uint8_t zone, uint16_t slot,
                                       size_t offset, uint8_t* data, size_t length)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     uint8_t data_set_size = (ATCA_ZONE_DATA == zone) ? ATCA_BLOCK_SIZE : ATCA_CA2_CONFIG_SLOT_SIZE;
     size_t cur_block = 0;
     size_t data_idx = 0;
@@ -806,7 +806,7 @@ ATCA_STATUS calib_read_zone_ext(
 {
 #if ATCA_CA2_SUPPORT
     ATCADeviceType devtype = atcab_get_device_type_ext(device);
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
 
     if (atcab_is_ca2_device(devtype))
     {
@@ -973,7 +973,7 @@ ATCA_STATUS calib_cmp_config_zone(ATCADevice device, uint8_t* config_data, bool*
  */
 ATCA_STATUS calib_read_pubkey(ATCADevice device, uint16_t slot, uint8_t *public_key)
 {
-    ATCA_STATUS status;
+    ATCA_STATUS status = ATCA_BAD_PARAM;
     uint8_t read_buf[ATCA_BLOCK_SIZE];
     uint8_t block = 0;
     uint8_t offset = 0;
